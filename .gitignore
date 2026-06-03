@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Local planning + research (not part of the published log)
+CLAUDE.md
+CANDIDATES.md
+drafts/
+
+# Claude Code per-project state
+.claude/
+
+# Common scratch
+*.log
+build/
+__pycache__/
+.venv/
+node_modules/
