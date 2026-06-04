@@ -3,7 +3,7 @@
 **Contribution Number:** 2
 **Student:** Suryansh Sijwali
 **Issue:** https://github.com/Samsung/ONE/issues/14407
-**Status:** Phase I In Progress
+**Status:** Phase I Complete
 
 ---
 
