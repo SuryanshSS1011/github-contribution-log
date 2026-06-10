@@ -1,10 +1,10 @@
-# Contribution 5: Exempt `sys.version` / `sys.implementation.version` from PLR2004
+# Contribution 5: Exempt `sys.version` family comparisons from PLR2004
 
 **Contribution Number:** 5
 **Student:** Suryansh Sijwali
 **Issue:** https://github.com/astral-sh/ruff/issues/25588
 **Pull Request:** https://github.com/astral-sh/ruff/pull/25743
-**Status:** Phase III — PR submitted, summary rewritten per AI Policy ask, awaiting review
+**Status:** **Merged** on 2026-06-10 by ntBre after one review round.
 
 ---
 
@@ -310,6 +310,37 @@ needs to be in my own voice.
   have been in the PR body explicitly. I put it in my own head and
   the AI-flavored body had a parenthetical aside about it that got
   diluted; the rewrite is clearer about the deliberate scope.
+
+---
+
+## Review and merge
+
+ntBre reviewed on 2026-06-09 with five substantive points:
+
+1. Replace `segments.get(..N)` with slice-with-rest patterns
+   (`["sys", "version", ..]`) in `is_sys_version_comparand`.
+2. Migrate the new tests to mdtest format
+   (`crates/ruff_linter/resources/mdtest/pylint/`).
+3. Include `sys.version_info` in the exemption: "I also think we
+   should just handle `sys.version_info`. Is there a reason not
+   to?" This expanded the scope I had originally taken from
+   MichaReiser's wording.
+4. Trim the docstring paragraph.
+5. Drop the `Vec<&Expr>::collect()` and index arithmetic; use a
+   `peekable()` iterator with a `previous` slot instead.
+
+Addressed all five in a single force-pushed revision. ntBre
+approved and merged on 2026-06-10. The merged diff is +93 / -11
+lines across `magic_value_comparison.rs` and the new mdtest.
+
+The scope-expansion to `sys.version_info` is the only design call
+the review surfaced. My original strict reading of Micha's words
+("`sys.version` and *maybe* `sys.implementation.version`") was
+defensible but turned out to be over-conservative — `sys.version_info`
+is the canonical Python version-check site and excluding it would
+have left users with the same friction the issue was filed about,
+just on a different attribute. ntBre's question made that obvious
+and I should have caught it before posting.
 
 ---
 
