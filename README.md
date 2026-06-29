@@ -11,6 +11,7 @@ Tracking workspace for my open-source contributions. Focus areas: ML compilers, 
 | [3](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/uv_7035_requires_python_hint.md) | astral-sh/uv | [#7035](https://github.com/astral-sh/uv/issues/7035) | Hint when a build failure is caused by a `requires-python` mismatch | Phase III — [PR #19673](https://github.com/astral-sh/uv/pull/19673) submitted |
 | [4](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/enzymejax_1084_reduce_const_prop.md) | EnzymeAD/Enzyme-JAX | [#1084](https://github.com/EnzymeAD/Enzyme-JAX/issues/1084) | Reduce constant prop | Phase III — [PR #2524](https://github.com/EnzymeAD/Enzyme-JAX/pull/2524) submitted |
 | [5](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/ruff_25588_plr2004_sys_version.md) | astral-sh/ruff | [#25588](https://github.com/astral-sh/ruff/issues/25588) | Exempt `sys.version` family comparisons from PLR2004 | **Merged** — [PR #25743](https://github.com/astral-sh/ruff/pull/25743) |
+| [6](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_20556_mlx_externalproject.md) | pytorch/executorch | [#20556](https://github.com/pytorch/executorch/issues/20556) | Isolate the MLX submodule build with ExternalProject | **Merged** — [PR #20585](https://github.com/pytorch/executorch/pull/20585) |
 
 Per-contribution writeups live in [`contributions/`](contributions/).
 
