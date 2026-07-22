@@ -1,6 +1,6 @@
 # Open-Source Contribution Log
 
-Tracking workspace for my open-source contributions. Focus areas: ML compilers, kernel/op implementation, inference performance, HPC profiling tooling, and developer tools.
+Tracking workspace for my open-source contributions across ML systems and program-analysis tooling, adjacent to my research.
 
 ## Active contributions
 
