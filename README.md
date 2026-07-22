@@ -14,6 +14,7 @@ Tracking workspace for my open-source contributions. Focus areas: ML compilers, 
 | [6](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/infer_1951_optional_resource_leak.md) | facebook/infer | [#1951](https://github.com/facebook/infer/issues/1951) | Model `java.util.Optional` so Pulse catches resource leaks through it | **Merged** — [PR #2068](https://github.com/facebook/infer/pull/2068) |
 | [7](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/ty_3674_slots_rename.md) | astral-sh/ty | [#3674](https://github.com/astral-sh/ty/issues/3674) | Update `__slots__` string when renaming an attribute | **Merged** — [PR #26438](https://github.com/astral-sh/ruff/pull/26438) |
 | [8](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_551_activations_store_no_dataset.md) | decoderesearch/SAELens | [#551](https://github.com/decoderesearch/SAELens/issues/551) | Don't load the dataset when reading cached activations (`ActivationsStore`) | **Merged** — [PR #716](https://github.com/decoderesearch/SAELens/pull/716) |
+| [9](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/datasets_8327_fingerprint_chunking.md) | huggingface/datasets | [#8327](https://github.com/huggingface/datasets/issues/8327) | Make the dataset fingerprint independent of Arrow chunking (fixes `from_pandas` OOM) | **Merged** — [PR #8339](https://github.com/huggingface/datasets/pull/8339) |
 
 Per-contribution writeups live in [`contributions/`](contributions/).
 
@@ -24,4 +25,4 @@ Issues I investigated and filed; maintainers are actioning the fix.
 | # | Repo | Issue | Topic | Status |
 |---|---|---|---|---|
 | 1 | huggingface/transformers | [#46489](https://github.com/huggingface/transformers/issues/46489) | DeepSeek-Coder v1 tokenizer wrong output on v5+ (gap in PR #44801) | **Resolved** — maintainer fix [PR #46091](https://github.com/huggingface/transformers/pull/46091) merged; issue closed |
-| 2 | huggingface/transformers | [#46491](https://github.com/huggingface/transformers/issues/46491) | CodeLlama tokenizer strips leading space on round-trip (v4 regression) | Open; another contributor's fix [PR #46574](https://github.com/huggingface/transformers/pull/46574) open (built on my analysis), awaiting maintainer review |
+| 2 | huggingface/transformers | [#46491](https://github.com/huggingface/transformers/issues/46491) | CodeLlama tokenizer strips leading space on round-trip (v4 regression) | Closed by the stale bot 2026-07-17 (no maintainer fix merged); another contributor's [PR #46574](https://github.com/huggingface/transformers/pull/46574) (built on my analysis) is still open |
