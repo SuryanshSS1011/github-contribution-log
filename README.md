@@ -16,14 +16,12 @@ Tracking workspace for my open-source contributions across ML systems and progra
 | [8](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_551_activations_store_no_dataset.md) | decoderesearch/SAELens | [#551](https://github.com/decoderesearch/SAELens/issues/551) | Don't load the dataset when reading cached activations (`ActivationsStore`) | **Merged** — [PR #716](https://github.com/decoderesearch/SAELens/pull/716) |
 | [9](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/datasets_8327_fingerprint_chunking.md) | huggingface/datasets | [#8327](https://github.com/huggingface/datasets/issues/8327) | Make the dataset fingerprint independent of Arrow chunking (fixes `from_pandas` OOM) | **Merged** — [PR #8339](https://github.com/huggingface/datasets/pull/8339) |
 | [10](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_20804_transposed_conv_dimorder.md) | pytorch/executorch | [#20804](https://github.com/pytorch/executorch/issues/20804) | Allow transposed convolution weights with a non-default dim order (`out_channels=1`) | **Merged** — [PR #21035](https://github.com/pytorch/executorch/pull/21035) |
+| [11](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/transformers_47488_codellama_leadingspace.md) | huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) | CodeLlama tokenizer drops leading whitespace on decode (build pipeline from the reference normalizer) | **Merged** — [PR #47488](https://github.com/huggingface/transformers/pull/47488) |
 
 Per-contribution writeups live in [`contributions/`](contributions/).
 
 ## Filed bug reports
 
-Issues I investigated and filed; maintainers are actioning the fix.
-
 | # | Repo | Issue | Topic | Status |
 |---|---|---|---|---|
 | 1 | huggingface/transformers | [#46489](https://github.com/huggingface/transformers/issues/46489) | DeepSeek-Coder v1 tokenizer wrong output on v5+ (gap in PR #44801) | **Resolved** — maintainer fix [PR #46091](https://github.com/huggingface/transformers/pull/46091) merged; issue closed |
-| 2 | huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) | CodeLlama tokenizer drops leading whitespace on decode round-trip | Refiled (supersedes stale-closed #46491); verified still live on main 5.15.0.dev0. Fix filed as [PR #47488](https://github.com/huggingface/transformers/pull/47488) |
