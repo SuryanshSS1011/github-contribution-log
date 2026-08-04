@@ -8,7 +8,7 @@ Eight merged and three in review, across ten upstream projects. In the tables be
 
 | Project | Issue | What I fixed | Pull request | Merged |
 |---|---|---|---|---|
-| huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) | [CodeLlama tokenizer dropped leading whitespace on decode, so indented code lost a level](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/transformers_47488_codellama_leadingspace.md) | [#47488](https://github.com/huggingface/transformers/pull/47488) | 2026-07-31 |
+| huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) (self-filed) | [CodeLlama tokenizer dropped leading whitespace on decode, so indented code lost a level](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/transformers_47488_codellama_leadingspace.md) | [#47488](https://github.com/huggingface/transformers/pull/47488) | 2026-07-31 |
 | huggingface/datasets | [#8327](https://github.com/huggingface/datasets/issues/8327) | [`Dataset.from_pandas` OOM caused by a fingerprint that scaled with Arrow chunk count](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/datasets_8327_fingerprint_chunking.md) | [#8339](https://github.com/huggingface/datasets/pull/8339) | 2026-07-22 |
 | pytorch/executorch | [#20804](https://github.com/pytorch/executorch/issues/20804) | [Portable CPU kernel rejected valid transposed convolution weights with a non-default dim order](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_20804_transposed_conv_dimorder.md) | [#21035](https://github.com/pytorch/executorch/pull/21035) | 2026-07-22 |
 | decoderesearch/SAELens | [#551](https://github.com/decoderesearch/SAELens/issues/551) | [`ActivationsStore` loaded the whole dataset even when reading cached activations](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_551_activations_store_no_dataset.md) | [#716](https://github.com/decoderesearch/SAELens/pull/716) | 2026-07-20 |
@@ -29,6 +29,7 @@ Eight merged and three in review, across ten upstream projects. In the tables be
 
 | Project | Issue | What I reported | Status |
 |---|---|---|---|
+| huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) | CodeLlama tokenizer dropped leading whitespace on decode, refiled with a fresh reproduction after [#46491](https://github.com/huggingface/transformers/issues/46491) was stale-closed | Fixed by my own [#47488](https://github.com/huggingface/transformers/pull/47488), listed above. |
 | huggingface/transformers | [#46489](https://github.com/huggingface/transformers/issues/46489) | DeepSeek-Coder v1 tokenizer produced wrong output on v5 and later, a gap left by PR #44801 | Resolved by upstream [#46091](https://github.com/huggingface/transformers/pull/46091), issue closed. |
 
 ## About the writeups
