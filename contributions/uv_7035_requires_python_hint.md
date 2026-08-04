@@ -1,344 +1,210 @@
-# Contribution 3: Hint when a build failure is caused by a requires-python mismatch
+# Hint when a build failure is caused by a `requires-python` mismatch
 
-**Contribution Number:** 3
-**Student:** Suryansh Sijwali
-**Issue:** https://github.com/astral-sh/uv/issues/7035
-**Pull Request:** https://github.com/astral-sh/uv/pull/19673
-**Status:** Phase III — PR submitted, awaiting maintainer review
-
----
-
-## Why I Chose This Issue
-
-uv is the Rust-based Python package and project manager from Astral (the
-Ruff team). It's one of the strongest engineering-culture repos in active
-open source — fast iteration, careful review, strict CI — and contributing
-there is a learning opportunity in itself regardless of the specific issue.
-
-Issue #7035 asks for a targeted error hint when a transitive build failure
-is caused by the failing package's declared `requires-python` excluding the
-active interpreter. This is a common confusing failure mode: a user pins
-`numba==0.53.1` (released ~early 2021) on Python 3.12, and gets a deep
-build-backend `RuntimeError` somewhere inside `llvmlite`'s `setup.py` that
-doesn't say "you're using the wrong Python." The targeted hint would
-shortcut a lot of "why doesn't this work?" diagnosis.
-
-I picked it after going through several other uv issues this session: most
-that looked promising turned out to be either (a) phantoms — already
-implemented but the issue hadn't been closed (uv #7040, #4711's prior
-attempts), (b) design-unresolved at the maintainer level (uv #4711 itself,
-where I posted a form-factor question first), or (c) Windows-only
-verification (uv #12142). #7035 was the first one that was clearly
-available, had real engineering substance, and had a verifiable gap on
-current master.
+**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
+**Project:** [astral-sh/uv](https://github.com/astral-sh/uv) · **My fork:** https://github.com/SuryanshSS1011/uv
+**Issue:** [#7035](https://github.com/astral-sh/uv/issues/7035) · **Pull request:** [#19673](https://github.com/astral-sh/uv/pull/19673) · **Branch:** `pip-install-requires-python-hint`
+**Status:** Open. CI green, reworked after review, parked on an upstream refactor.
 
 ---
 
-## Understanding the Issue
+## Phase I: Issue Selection
 
-### Problem Description
+### Why I Chose This Issue
 
-When a transitive dependency of a user's requirement fails to build, the
-underlying build-backend error (typically a Python `SyntaxError` from a
-package using Python 2 `print` statements, or a `RuntimeError` from a
-hand-rolled version guard in the package's `setup.py`) is what gets
-surfaced. The actual root cause — the package's declared `requires-python`
-doesn't include the active interpreter — is information uv already has
-cached (it's in the dist's registry metadata), but never tells the user.
+uv is the Rust-based Python package and project manager from Astral, the team behind Ruff. It is one of the strongest engineering-culture repos in active open source, with fast iteration, careful review and strict CI, so contributing there is a learning opportunity in itself regardless of the specific issue. My learning goal was to work on diagnostics rather than features, meaning I wanted to figure out what information a tool already holds at failure time and how to surface it without lying to the user. That turned out to be exactly the hard part here.
 
-The issue body specifically mentions this is the most common reason for
-`pyannote-audio → numba → llvmlite` build failures in the field.
+Issue #7035 asks for a targeted error hint when a transitive build failure is caused by the failing package's declared `requires-python` excluding the active interpreter. This is a common and confusing failure mode. A user pins `numba==0.53.1`, released in early 2021, on Python 3.12 and gets a deep build-backend `RuntimeError` from inside `llvmlite`'s `setup.py` that never says "you're using the wrong Python."
 
-### Expected Behavior
+I picked it after going through several other uv issues. Most of the promising ones turned out to be phantoms that were already implemented but not closed (uv #7040 and #4711's prior attempts), or design-unresolved at the maintainer level (uv #4711 itself, where I posted a form-factor question first), or Windows-only to verify (uv #12142). #7035 was the first one that was clearly available, had real engineering substance, and had a verifiable gap on current `main`.
 
-When `uv pip install` or `uv pip sync` fails to build a package whose
-declared `requires-python` excludes the active interpreter, surface a
-targeted hint identifying the version mismatch as the likely root cause —
-before the existing derivation-chain hint and the generic build-failure
-hint, since it diagnoses the actual problem.
+### Problem Summary
 
-### Current Behavior (verified on uv 0.11.19, current master)
+When a transitive dependency fails to build, uv surfaces the build backend's own error, usually a `SyntaxError` from Python-2-era code or a `RuntimeError` from a hand-rolled version guard, and never mentions that the package simply does not support the running interpreter. uv already has that fact cached in the distribution's metadata, so the user is left reading a stack trace to rediscover something the tool knows. It matters because this is the single most common cause of the `pyannote-audio` to `numba` to `llvmlite` class of failures that end up filed as uv bugs. I chose it because it is a real diagnostic-quality problem in a repo with a high review bar, and the gap was reproducible on current `main`.
 
-Reproduction:
+### Issue Vetting
 
-```toml
-[project]
-name = "test"
-version = "0.1.0"
-requires-python = ">=3.12"
-dependencies = ["numba==0.53.1"]
+Open, unassigned, no in-flight PR touching the hint path, and no blocking labels. The only prior comment is from `hauntsaninja` on [2024-09-08](https://github.com/astral-sh/uv/issues/7035#issuecomment-2337003074), asking for a related special case when the package version predates the target Python's first release candidate. That is adjacent, unimplemented, and explicitly out of scope for this PR.
+
+### Where It Lives
+
+The final surface after review:
+
+- `crates/uv-distribution/src/source/mod.rs`, the build-failure site, where the build environment's interpreter and the distribution's `requires-python` are both in scope.
+- `crates/uv-errors/src/lib.rs`, the `Hints` API, which only had `push` (append) and needed `prepend` so a root-cause hint renders before contextual hints.
+- `crates/uv-types/src/traits.rs`, build-context plumbing for the interpreter.
+
+The first implementation instead targeted `crates/uv/src/commands/diagnostics.rs` plus the four `pip_install` and `pip_sync` call sites. The Maintainer Feedback Log explains why that moved.
+
+### Acceptance Criteria
+
+1. A build failure whose distribution declares a `requires-python` that excludes the interpreter used for the build emits a hint naming both ranges.
+2. The hint renders before the existing derivation-chain hint and the generic build-failure hint.
+3. No spurious hint appears on a compatible package, or on a distribution with no `requires-python` metadata.
+4. The wording does not claim causation it cannot prove, and does not tell the user to move up or down a version when either direction can be correct.
+5. `cargo fmt` and `cargo clippy` are clean, and snapshot coverage is added.
+
+---
+
+## Phase II: Reproduce & Plan
+
+### Environment Setup
+
+I used uv's `CONTRIBUTING.md` for the local dev loop and its root `AGENTS.md` for conventions around doc comments, tests and import patterns, plus the CI workflow files for the exact lint invocations the bots run.
+
+- macOS arm64 (Apple Silicon).
+- **Challenge (Rust toolchain not on `PATH`):** I installed Rust via Homebrew's `rustup` formula, which uses rustup's proxy model, so `cargo` and `rustc` are not symlinked into `/opt/homebrew/bin`. I resolved it by putting `~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/` on `PATH`.
+- **Challenge (build cost):** first clean build took 2 min 31 s and an incremental rebuild after a patch takes about 35 s. That is cheap enough to iterate on, unlike the other compiled repos I work in.
+- **Challenge (snapshot format drift after a rebase):** after rebasing onto `main`, previously green snapshot tests went red. The cause was upstream PR #20630 changing the `uv_snapshot!` header format, since the `success:` line and empty stdout block are dropped and the exit code renders differently. That was not my change, so I regenerated the snapshots and flagged it on the PR to save the reviewer the diagnosis time.
+- A `CHANGELOG.md` conflict during the same rebase was resolved by taking upstream's version wholesale, because my change adds no changelog entry.
+
+### Steps to Reproduce
+
+1. `mkdir uv_test && cd uv_test && uv venv .venv --python 3.12`
+2. Write this `pyproject.toml`:
+   ```toml
+   [project]
+   name = "test"
+   version = "0.1.0"
+   requires-python = ">=3.12"
+   dependencies = ["numba==0.53.1"]
+   ```
+3. Build uv from `main` and run `uv pip install -e .` with it.
+4. Observe the build fail with `llvmlite`'s `RuntimeError: Cannot install on Python version 3.12.4; only versions >=3.6,<3.10 are supported.`
+5. Read the hints printed underneath.
+
+### Expected vs. Actual
+
+**Actual (uv 0.11.19, `main`):**
+
 ```
-
-```
-$ uv pip install -e .
-... (llvmlite build failure with python-version-guard RuntimeError) ...
-
 hint: `llvmlite` (v0.36.0) was included because `test` (v0.1.0) depends
       on `numba` (v0.53.1) which depends on `llvmlite`
 hint: Build failures usually indicate a problem with the package or the
       build environment
 ```
 
-The two existing hints establish the derivation chain (already a real
-contribution, landed by an earlier PR) and a generic build-failure note,
-but neither identifies the `requires-python` mismatch.
+The two hints establish the derivation chain and a generic build-failure note. Neither mentions `requires-python`, even though `llvmlite==0.36.0` declares `>=3.6,<3.10` and uv has that string in hand.
 
-### Affected Components
+**Expected:**
 
-- `crates/uv-errors/src/lib.rs` — the `Hints` API (only had `push`/append;
-  needed `prepend` to insert the new diagnostic at the front).
-- `crates/uv-distribution-types/src/requested.rs` — added a `file()`
-  accessor on `RequestedDist`, mirroring the existing one on `Dist`.
-- `crates/uv/src/commands/diagnostics.rs` — the central hint-rendering
-  layer for distribution-failure errors. Threaded the active
-  `python_version` through `OperationDiagnostic` and added the new hint
-  function `requires_python_hint`.
-- `crates/uv/src/commands/pip/install.rs` and `pip/sync.rs` — two call
-  sites each, wired to pass `interpreter.python_version()` into the
-  diagnostic.
+```
+hint: The build requires Python >=3.6, <3.10, but Python 3.12 is used.
+hint: `llvmlite` (v0.36.0) was included because ...
+hint: Build failures usually indicate a problem with the package or the
+      build environment
+```
 
----
+### Root Cause
 
-## Reproduction Process
+This is not a logic bug but a missing diagnostic, plus a layering mistake in my own first fix. The information needed is already in scope at failure time, since the distribution carries `requires_python: Option<VersionSpecifiers>` in its registry metadata or statically in a source tree's `pyproject.toml`, and the interpreter is bound in the build context. Nothing renders it.
 
-### Environment Setup
+Review surfaced the deeper layering point. The resolve interpreter is not necessarily the interpreter that built the distribution, and build failures also occur under `uv lock` and `uv pip compile` rather than only under `pip install` and `pip sync`. So the hint belongs at the build-failure site in `uv-distribution`, where the build environment's interpreter is the one actually in scope, and not in the command-level diagnostics layer.
 
-- macOS arm64 (Apple Silicon).
-- Installed Rust via Homebrew's `rustup` formula. Note: the formula uses
-  rustup's proxy model — `cargo`/`rustc` aren't symlinked into
-  `/opt/homebrew/bin`; binaries live under
-  `~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/`. Have to add
-  that to PATH.
-- Forked `astral-sh/uv` on GitHub, cloned my fork at `~/oss-work/uv`.
-- First clean build: 2 min 31 sec.
-- Incremental rebuild after the patch: 35 seconds.
+### Plan (UMPIRE)
 
-### Steps to Reproduce the Bug
+**Understand:** A failing transitive build gives the user a deep build-backend error with no indication that the real problem is `requires-python`. Surface a targeted hint whenever that mismatch is detectable from metadata uv already holds.
 
-1. `mkdir uv_test && cd uv_test && uv venv .venv --python 3.12`
-2. Write a `pyproject.toml` listing `numba==0.53.1` (or any package whose
-   transitive dependency has a `requires-python` not including 3.12).
-3. `uv pip install -e .` against master uv.
-4. Observe: build fails with `llvmlite`'s `RuntimeError: Cannot install on
-   Python version 3.12.4; only versions >=3.6,<3.10 are supported.`
-5. Observe: the two existing hints appear, but none identify the
-   `requires-python` mismatch.
-
-### Reproduction Evidence
-
-The "before" output is captured in the PR description and the
-`Understanding the Issue` section above.
-
----
-
-## Solution Approach
-
-### Analysis
-
-The information needed to generate the hint is already in scope at error-
-rendering time:
-
-- The failing distribution carries its registry metadata via `Dist::file()`
-  (or `RequestedDist::file()` after this PR), which includes the
-  `requires_python: Option<VersionSpecifiers>` field set by the package
-  author.
-- The active interpreter's Python version is available via
-  `interpreter.python_version() -> &Version` on the `Interpreter` already
-  bound in `pip_install` / `pip_sync` before the call to
-  `OperationDiagnostic::report`.
-
-So no network calls, no metadata refetch — just plumbing two pieces of
-already-computed state through to the renderer.
-
-### Proposed Solution
-
-Three logical changes:
-
-1. Add `Hints::prepend` to the `uv-errors` crate so the new hint can be
-   inserted at the front of the hint list (since it diagnoses the root
-   cause and should render before contextual hints).
-2. Expose `file()` on `RequestedDist`, mirroring the existing one on
-   `Dist`, so the diagnostic layer can reach registry metadata uniformly.
-3. Thread `python_version: Option<Version>` through `OperationDiagnostic`
-   via a new `with_python_version()` builder. In the existing
-   `dist_error` / `requested_dist_error` renderers, call the new
-   `requires_python_hint` function, which returns `Some(hint_string)`
-   exactly when the dist has a `requires-python` and it excludes the
-   active interpreter version. Wire `with_python_version` into the two
-   call sites each in `pip_install` and `pip_sync`.
-
-### Implementation Plan
-
-Using UMPIRE framework (adapted):
-
-**Understand:** Failing transitive build → user gets a deep build-backend
-error with no indication that the *real* problem is requires-python.
-Surface a targeted hint when the mismatch can be detected from cached
-metadata.
-
-**Match:** uv already has `DerivationChain` (computed in
-`uv-distribution-types`, rendered via `format_chain` in `diagnostics.rs`)
-that does exactly this kind of "extract structured context from a failure
-and format a hint" work. The new hint follows the same pattern: extract a
-structured property (`requires-python` mismatch) from a failure, format a
-human-readable hint string, prepend to the hint list.
+**Match:** uv already has `DerivationChain`, computed in `uv-distribution-types` and rendered via `format_chain`, doing exactly this shape of work by extracting structured context from a failure, formatting a hint string and attaching it. After review I matched a second and closer precedent in PR #20157, which attaches context to the build error itself and produces the hint in the error's `Hint` implementation, leaving the error rendering otherwise untouched.
 
 **Plan:**
-1. Read `diagnostics.rs`, `preparer.rs`, and `dist_error.rs` end-to-end
-   to map the existing infrastructure.
-2. Verify on current master that the gap is real (the numba/llvmlite
-   repro emits no requires-python-aware hint).
-3. Add `Hints::prepend` (commit 1).
-4. Add `RequestedDist::file()` (commit 2).
-5. Thread `python_version` through `OperationDiagnostic`, add
-   `requires_python_hint`, wire it into the two error renderers, and
-   pass the interpreter version at the four call sites in
-   `pip_install`/`pip_sync` (commit 3).
-6. Build, run the existing `resolve_derivation_chain` test, manually
-   verify the patch on the numba repro and a known-good install.
-7. `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D
-   warnings`.
-8. Match uv's doc-comment house style: one-line `///` per function/field
-   unless a multi-paragraph block is actually needed.
-9. Open PR; iterate on review.
+1. Read `diagnostics.rs`, `preparer.rs` and `dist_error.rs` end to end to map the existing infrastructure.
+2. Verify on `main` that the gap is real, since the numba and llvmlite repro emits no `requires-python`-aware hint.
+3. Add `Hints::prepend` so a root-cause hint can render before contextual hints.
+4. Compute the mismatch where the build fails, in `uv-distribution/src/source/mod.rs`, using the build environment's interpreter and `build_requires_python`.
+5. Attach the context to the build error and emit the hint from its `Hint` impl, following the #20157 shape.
+6. Add snapshot coverage in the `pip_install` and `pip_sync` integration tests.
+7. Run `cargo fmt --check` and `cargo clippy --workspace --all-targets -- -D warnings`.
+8. Match uv's house style of one-line `///` per item unless a block is genuinely needed.
 
-**Implement:** Branch `pip-install-requires-python-hint` on my fork;
-three commits at `72da414` (HEAD).
+**Implement:** Branch `pip-install-requires-python-hint` on my fork, with the final state as a single squashed commit, `5346e25ac`.
 
-**Review:** Self-review checklist before opening PR:
-- [x] Single-line `///` docs match house style (verified against
-  `Hints::push`, `Dist::file`, neighboring functions in
-  `diagnostics.rs`).
-- [x] Diff scoped to `pip install` / `pip sync` only — flagged the broader
-  set of `OperationDiagnostic` callers in the PR description as a possible
-  follow-up.
-- [x] No new dependencies, no new public types beyond the one accessor.
-- [x] Existing `resolve_derivation_chain` test still passes (wsgiref has
-  no `requires-python` metadata, so the new hint correctly doesn't fire).
-- [x] `cargo fmt --check` clean.
-- [x] `cargo clippy --workspace --all-targets -- -D warnings` clean.
+**Review:** My self-checklist before pushing was that single-line `///` docs are verified against neighbors, there are no new dependencies, there are no new public types beyond what the hint needs, `fmt` and `clippy` are clean, and the hint does not fire on dists without `requires-python`.
 
-**Evaluate:** Manually run the numba/llvmlite repro on Python 3.12 →
-observe the new hint as the first hint in the output, followed by the
-existing chain hint and generic hint. Run a known-good install (`uv pip
-install rich`) → observe no spurious hint.
+**Evaluate:** Run the numba and llvmlite repro on 3.12 and confirm the new hint renders first, run `uv pip install rich` and confirm no spurious hint, then run `wsgiref==0.1.2` (which has no `requires-python` metadata) and confirm the hint stays silent while the existing chain hint still appears.
+
+### Edge Cases Considered
+
+- **Interpreter below the range rather than above it:** zanieb raised this. Telling the user to upgrade would be wrong when they are on Python 3.8 and the package needs `>=3.10`. I checked that `RequiresPython::from_specifiers(...).range()` exposes `lower()` and `upper()` so the direction is detectable, then deliberately kept the wording neutral, as in "The build requires Python X, but Python Y is used", rather than shipping a directional suggestion in this PR.
+- **Universal resolution:** Build environments could in principle use different interpreter versions. I confirmed that `pip install` and `pip sync` do not support `--universal` and both resolve with `ResolverEnvironment::specific`, so there is one well-defined version in scope. Moving the hint to the build site made the point moot anyway, since the build environment's own interpreter is now used.
+- **No `requires-python` available:** `build_requires_python` returns `None` for a source tree with no readable or parseable `pyproject.toml` (legacy `setup.py`-only projects), one with no `requires-python` or a `dynamic` one, and one with a malformed specifier that gets logged at `debug!`. In all three the original build error is returned unchanged with no hint attached.
+- **Minor-version display:** `requires-python` is expressed in minor versions, so the hint shows `3.12` rather than `3.12.4`. I flagged this in the PR body as an easy change if the maintainer prefers the full version.
 
 ---
 
-## Testing Strategy
+## Phase III: Build
 
-### Unit Tests
+### Implementation Progress
 
-Not applicable to this contribution — the change lives at the integration
-layer (rendering hints attached to distribution-failure errors), not at a
-unit boundary.
+| Commit | Date | Message |
+|---|---|---|
+| `5346e25ac` | 2026-07-28 | Hint when a build failure is caused by a requires-python mismatch |
 
-### Integration Tests
+The branch previously carried three commits from the resolve-side design, covering `Hints::prepend`, a `RequestedDist::file()` accessor and then the hint itself wired through `OperationDiagnostic`. That design was replaced during review, the accessor became unnecessary once the hint moved to the build site, and the history was squashed on rebase.
 
-The PR currently ships **without a new integration test**. Reasons:
+**Files modified (final diff):**
 
-- The existing pattern in `crates/uv/tests/it/pip_install.rs` for hint
-  tests uses real package installs (`wsgiref==0.1.2` for the chain test).
-  A new test using `numba==0.53.1` would be analogous, but the
-  classification feedback I got was that hitting PyPI for a specific old
-  sdist version is brittle.
-- A local-sdist test (generate a sdist with `requires-python = ">=3.6,
-  <3.10"` and a guarded `setup.py`) is cleaner but adds test
-  infrastructure beyond the patch scope.
-- I flagged this explicitly in the PR description and offered to add a
-  test in whichever shape the maintainer prefers.
+| File | Δ |
+|---|---|
+| `crates/uv-distribution/src/source/mod.rs` | +100 / −7 |
+| `crates/uv-errors/src/lib.rs` | +5 |
+| `crates/uv-types/src/traits.rs` | +18 / −3 |
+| `crates/uv/tests/pip_install/pip_install.rs` | +39 |
+| `crates/uv/tests/pip/pip_sync.rs` | +2 |
 
-### Manual Testing
+**Design decision (why `prepend` and not `push`):** the new hint diagnoses the likely root cause while the existing chain hint provides context, and compiler-style diagnostics put root cause first with context after.
 
-- [x] `numba==0.53.1` install on Python 3.12 → new hint appears as the
-  first hint, before the chain hint, before the generic hint.
-- [x] `rich` install on Python 3.12 (compatible package) → no spurious
-  hint.
-- [x] `wsgiref==0.1.2` install on Python 3.12 (no `requires-python`
-  metadata) → the new hint correctly doesn't fire; the existing chain
-  hint still appears.
+**Design decision (why the build site and not the command):** this is covered under Root Cause. The short version is that scoping to two commands was a smaller diff but the wrong layer, and the reviewer was right.
 
----
+### Challenges Faced
 
-## Implementation Notes
+The concrete blocker was testing. In the first design the hint only fired for registry distributions, the ones that carry a `File` with `requires-python`, and I could not get uv's fixtures to line that up. `packse` packages build successfully so nothing triggers the failure, and the path-dependency and custom-build-backend tests never go through a registry `File`. Rather than guess, I said so on the review thread and asked whether there was a reference test for the registry-sdist-build-failure case.
 
-### Code Changes
+zanieb's answer reframed the problem. The registry-only restriction was itself the mistake, because `requires-python` is available for all distribution types. Moving the hint to the build-failure site removed the restriction and made the change testable with the custom-build-backend approach at the same time, so the testing blocker and the design flaw had the same fix.
 
-- **Files modified:**
-  - `crates/uv-distribution-types/src/requested.rs` (+9 / −1)
-  - `crates/uv-errors/src/lib.rs` (+5)
-  - `crates/uv/src/commands/diagnostics.rs` (+54 / −7)
-  - `crates/uv/src/commands/pip/install.rs` (+2)
-  - `crates/uv/src/commands/pip/sync.rs` (+2)
-- **Branch:** `pip-install-requires-python-hint` on
-  `SuryanshSS1011/uv`.
-- **Commits:**
-  - `76deb21` — Add Hints::prepend for inserting root-cause hints first.
-  - `ac497f6` — Expose File access on RequestedDist.
-  - `72da414` — Hint when a build failure is caused by a requires-python
-    mismatch. (Closes #7035.)
-- **Approach decision — why scope to `pip install`/`pip sync` only:**
-  The same hint would fire usefully on many other `OperationDiagnostic`
-  call sites (about 30 across the codebase: project sync, add, run, tool,
-  audit, version, etc.). Threading the `python_version` through all of
-  them at once would have doubled the diff size and increased the chance
-  of touching a code path with subtler error flows. Scoped to the two
-  sites named in the issue body for review; flagged the follow-up
-  explicitly in the PR description.
-- **Approach decision — why `prepend` and not `push`:** The new hint
-  diagnoses the *likely root cause* (`requires-python` mismatch). The
-  existing chain hint provides *context* (where the failing dist came
-  from). Convention in compiler-style diagnostics is root cause first,
-  context after. Prepending matches this.
+### Testing
+
+- **New:** insta snapshot coverage for the hint in the integration tests, covering `build_requires_python_hint` plus the touched `require_hashes_find_links_no_hash`, following the existing `uv_snapshot!` pattern used by the neighboring hint tests in `crates/uv/tests/pip_install/pip_install.rs`. uv's own test-inventory bot confirmed the diff as 1 test added and 0 removed.
+- **Existing suite:** CI is green with 49 checks passing, 8 skipped and 1 cancelled as of 2026-08-04. uv runs about 30 distinct checks including platform variants, multiple lint tools, generated-file consistency and doc builds.
+- **Manual:** `numba==0.53.1` on Python 3.12 renders the new hint first, followed by the chain hint and the generic hint. `rich` on 3.12 produces no spurious hint. `wsgiref==0.1.2`, which has no `requires-python`, correctly leaves the hint silent with the chain hint unaffected.
+- `cargo fmt --check` is clean and `cargo clippy` is clean on the touched crates.
 
 ---
 
-## Pull Request
+## Phase IV: Submit & Iterate
 
-**PR Link:** https://github.com/astral-sh/uv/pull/19673
+### Pull Request
 
-**Maintainer Feedback:** None yet (submitted ~minutes ago).
+**[astral-sh/uv#19673](https://github.com/astral-sh/uv/pull/19673)**, opened 2026-06-04 against `astral-sh/uv:main`, referencing `Closes #7035`.
 
-**Status:** PR open, CI passing on completed checks (fmt, lint subsets,
-typos, lockfiles), several long-running checks still in progress (clippy
-linux/windows, cargo test on linux/windows, dev binary builds).
-Awaiting first reviewer assignment.
+The body opens with the user-facing problem of confused bug reports caused by an unexplained build failure, then the change, then before and after console output for the numba and llvmlite case, then an explicit scope note about the neutral wording and the minor-version display, and finally a checked test plan. Reviewer `zanieb` is engaged directly on the thread.
 
----
+### Maintainer Feedback Log
 
-## Learnings & Reflections
+| Date | From | Feedback | My response |
+|---|---|---|---|
+| 2026-06-28 | zanieb | "I'm not sure we can say it's the most likely cause unless we also have sniffed for a SyntaxError in the text." | Reworded to state the mismatch neutrally and drop the causation claim. |
+| 2026-06-28 | zanieb | How does this behave under universal resolution, where build environments may use different interpreters? | Investigated and answered on-thread that `pip install` and `pip sync` do not support universal resolution and resolve with `ResolverEnvironment::specific`, so one interpreter is in scope. Made moot by the later move to the build site. |
+| 2026-06-28 | zanieb | "We'll want some sort of test coverage for this... by creating a test package with a custom build backend." | Added unit coverage on the message builder immediately, explained the registry-`File` blocker for an end-to-end test and asked for a reference fixture. Resolved by the rework. |
+| 2026-06-28 | zanieb | What if `python_version` is below the `requires-python` range, wouldn't the suggestion be backwards? | Confirmed the direction is detectable via `RequiresPython::range()`'s `lower()` and `upper()`, and kept the wording direction-neutral instead of shipping a possibly wrong suggestion. |
+| 2026-06-29 | zanieb | "These build failures could happen in `uv lock` or `uv pip compile` too. Are we perhaps attaching the hint in the wrong location?" and "Why do we only fire the hint for a registry distribution?" | Agreed, and proposed generating the hint at the build-failure site in `uv-distribution` using the build environment's interpreter so it covers every distribution type. zanieb confirmed that matched his suggestion. |
+| 2026-06-30 to 2026-07-13 | Me | Own updates, no maintainer feedback in this window. | Pushed the full rework, posted a summary of what changed, and bumped once after two weeks of silence. |
+| 2026-07-18 | zanieb | "I'll try to take a look next week, feel free to ping me if I forget again 😬" | Posted a short note on what had changed since he last looked so the context would be fresh, then pinged on 2026-07-22 as invited. |
+| 2026-07-28 | zanieb | Doc-comment placement on `build_requires_python`, and a question about when we can fail to determine `requires-python`. | Moved the prose to inline comments per the suggestion and enumerated the three `None` cases, which are an unparseable or absent `pyproject.toml`, an absent or `dynamic` `requires-python`, and a malformed specifier, noting the error is returned unchanged in each. |
+| 2026-07-28 | zanieb | "The structure of this is not quite what I'd expect, I'm looking into a refactor to share." | Acknowledged, and pre-emptively flagged that the earlier red CI came from #20630 changing the `uv_snapshot!` header format after my rebase rather than from the patch, so it would not cost him diagnosis time. Currently waiting on his refactor. |
 
-To be filled in after review and merge.
+### Learnings & Reflections
 
-Open observations as of submission:
+**Technical:** The reviewer's central point was that I had attached the hint at the wrong layer, and that is the thing I will carry forward. My version was correct for the two commands named in the issue and wrong for the program, because `uv lock` and `uv pip compile` hit the same failure and the interpreter that matters is the build environment's rather than the resolver's. The tell was there in my own scope note about "about 30 other `OperationDiagnostic` call sites", because when the honest description of a change is that it is right for 2 of 30 call sites, that is usually a signal about layering rather than about scope discipline.
 
-- **uv's CI is unusually thorough** — ~30 checks including platform
-  variants, multiple lint tools, generated-file consistency, doc build,
-  benchmark suites. Tells me the maintainers expect contributions to
-  hold up under scrutiny. Worth running `cargo fmt --check` and `cargo
-  clippy -- -D warnings` locally before pushing.
-- **House style for `///` comments is strictly one-line in this
-  codebase**, even on private functions. Verified by reading neighbors
-  before settling on the final form. My first draft had multi-line docs
-  with rationale and issue links; revised to match.
-- **The "phantom issue" pattern is real and common in fast-moving
-  repos.** Of the candidates I evaluated, four turned out to already be
-  fixed: AMReX #3848, Enzyme-JAX #152 (the OptimizationBarrierOp
-  checklist), llama.cpp XIELU/TOP_K, and uv #7040. The right discipline
-  is to actually reproduce the gap on current master before writing
-  code, every time.
+**Process & collaboration:** Two habits paid off. When I hit the end-to-end test blocker I described precisely what I had tried and asked a specific question instead of shipping an untested patch or silently dropping the test, and the answer solved a design problem rather than only the test problem. I also kept the thread warm without being a nuisance, with one bump after three weeks of silence, a note on what had changed when he said he would look next week, and a ping only when he explicitly invited one. Flagging the #20630 snapshot breakage myself, before he could waste time on it, is also the cheapest possible way to be easy to review.
 
----
+**What I'd do differently:** I would spend the first hour asking where the failure actually originates instead of where it is currently rendered. I started from the rendering layer because that is where the output I wanted to change lives, and it cost a full redesign. I would also stop treating "the issue body names two commands" as a scope boundary, because issue bodies describe symptoms and the fix belongs wherever the cause is.
 
-## Resources Used
+### Resources Used
 
 - Issue thread: https://github.com/astral-sh/uv/issues/7035
-- uv `AGENTS.md` (root of repo) — coding conventions, especially around
-  doc comments, tests, and import patterns.
-- uv `CONTRIBUTING.md` — local dev setup, CI invocations.
-- Existing `resolve_derivation_chain` test in
-  `crates/uv/tests/it/pip_install.rs` — pattern for hint regression
-  tests.
-- `crates/uv-distribution-types/src/dist_error.rs` — `DerivationChain`
-  implementation, which served as the structural template for the new
-  hint.
+- uv `AGENTS.md` in the repo root, for conventions on doc comments, tests and imports.
+- uv `CONTRIBUTING.md`, for local dev setup and CI invocations.
+- PR [#20157](https://github.com/astral-sh/uv/pull/20157), the error-context and `Hint`-impl pattern the final design follows.
+- `crates/uv-distribution-types/src/dist_error.rs`, holding `DerivationChain`, the structural template for the first design.
+- Existing hint tests in `crates/uv/tests/pip_install/pip_install.rs`, for the snapshot-test pattern.
