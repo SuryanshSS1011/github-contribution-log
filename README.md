@@ -2,12 +2,13 @@
 
 Tracking workspace for my open-source contributions across ML systems and program-analysis tooling, adjacent to my research.
 
-Eight merged and three in review, across ten upstream projects. In the tables below, each entry in the "What I fixed" column links to its full writeup in [`contributions/`](contributions/).
+Nine merged and three in review, across ten upstream projects. In the tables below, each entry in the "What I fixed" column links to its full writeup in [`contributions/`](contributions/).
 
 ## Merged
 
 | Project | Issue | What I fixed | Pull request | Merged |
 |---|---|---|---|---|
+| decoderesearch/SAELens | self-sourced | [`autocast_lm` silently did nothing off CUDA, and the activation buffer landed on the wrong device](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_722_activations_store_device.md) | [#722](https://github.com/decoderesearch/SAELens/pull/722) | 2026-08-05 |
 | huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) (self-filed) | [CodeLlama tokenizer dropped leading whitespace on decode, so indented code lost a level](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/transformers_47488_codellama_leadingspace.md) | [#47488](https://github.com/huggingface/transformers/pull/47488) | 2026-07-31 |
 | huggingface/datasets | [#8327](https://github.com/huggingface/datasets/issues/8327) | [`Dataset.from_pandas` OOM caused by a fingerprint that scaled with Arrow chunk count](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/datasets_8327_fingerprint_chunking.md) | [#8339](https://github.com/huggingface/datasets/pull/8339) | 2026-07-22 |
 | pytorch/executorch | [#20804](https://github.com/pytorch/executorch/issues/20804) | [Portable CPU kernel rejected valid transposed convolution weights with a non-default dim order](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_20804_transposed_conv_dimorder.md) | [#21035](https://github.com/pytorch/executorch/pull/21035) | 2026-07-22 |
