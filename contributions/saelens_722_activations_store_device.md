@@ -1,34 +1,34 @@
 # Run the LLM autocast and the activation buffer on the model's device
 
-**Project:** [decoderesearch/SAELens](https://github.com/decoderesearch/SAELens) · **My fork:** https://github.com/SuryanshSS1011/SAELens
+**Project:** [decoderesearch/SAELens](https://github.com/decoderesearch/SAELens)
 **Issue:** none, self-sourced · **Pull request:** [#722](https://github.com/decoderesearch/SAELens/pull/722) · **Branch:** `fix/activations-store-autocast-device`
 **Status:** **Merged** 2026-08-05 (merge commit `928d44fb5`). Self-sourced, so there is no upstream issue.
 
 ---
 
-## Phase I: Issue Selection
+## The issue
 
-### Why I Chose This Issue
+### Why I picked it
 
 This is the second half of a deliberate two-step plan in SAELens. The first was [#551](https://github.com/decoderesearch/SAELens/issues/551), a small clean fix taken off the issue board purely to establish standing. SAELens's board is largely inactive, and the healthy merge rate there comes from contributors self-sourcing their own PRs rather than working the board, which is how the most active outside contributor (`danra`, roughly 19 PRs against 3 issues) operates. With one merge already landed, self-sourcing was the way to keep contributing.
 
 I went looking in `ActivationsStore` because I had just read it end to end for #551 and knew the class well. My learning goal was device-placement bugs, which are a category I wanted to understand better because they fail silently rather than loudly. A wrong device usually does not raise. It warns, or it quietly copies, and the cost shows up as a number that is subtly wrong or a run that is slower than it should be.
 
-### Problem Summary
+### What was wrong
 
 `ActivationsStore.get_activations` assumes CUDA in two independent places, so on Apple Silicon, CPU and XPU the `autocast_lm=True` flag silently does nothing and the activation buffer is allocated on the default device rather than where the model actually ran. Neither failure raises, so a user who opts into bfloat16 autocast gets a full-precision forward pass with no indication, and every batch takes an unnecessary round trip off the accelerator and back. It matters because SAELens is used heavily on Macs for local interpretability work, and because the sibling method in the same class already does both things correctly, so the bug reads as an oversight rather than a design choice. I chose it because it is a real correctness and performance bug that I could prove with measurements on two different accelerators.
 
-### How I Found It, and Why There Is No Issue
+### How I found it
 
 Self-sourced while reading `ActivationsStore` for the earlier contribution. I deliberately did not open an issue first, for two reasons drawn from how the repo actually behaves. Nobody there files claim comments, and the PRs that died closed and unmerged were the ones framed as speculative features rather than fixes. So I framed this as a bug fix throughout, opened the PR directly against `upstream/main` at `8be14080` (version 6.47.0), and re-checked upstream at final validation to confirm no rebase was needed.
 
-### Where It Lives
+### Where it lives
 
 - `sae_lens/training/activations_store.py`, specifically `get_activations`, which holds both CUDA assumptions, and its sibling `get_multi_hook_activations`, which already avoids both and is therefore the in-repo precedent.
 - `sae_lens/training/activations_store.py`, `get_raw_llm_batch`, which does the redundant `.to(self.device)` that the buffer fix makes into a no-op.
 - `tests/training/test_activations_store.py`, where lines 174 and 206 already assert `activations.device == store.device`.
 
-### Acceptance Criteria
+### What counts as done
 
 1. `autocast_lm=True` actually engages on MPS, CPU and XPU rather than being silently disabled.
 2. `autocast_lm` still engages on CUDA exactly as before.
@@ -38,9 +38,9 @@ Self-sourced while reading `ActivationsStore` for the earlier contribution. I de
 
 ---
 
-## Phase II: Reproduce & Plan
+## Diagnosis and plan
 
-### Environment Setup
+### Environment setup
 
 I needed two machines for this, because the bug behaves differently on CUDA and non-CUDA hardware and the strongest evidence is only obtainable on a GPU. Local work was on Apple Silicon (MPS) and the CUDA verification ran on Penn State's ROAR Collab cluster on an A100-PCIE-40GB in a 2g.10gb MIG slice with torch 2.13.0+cu126.
 
@@ -51,7 +51,7 @@ I needed two machines for this, because the bug behaves differently on CUDA and 
 - **Challenge (pyright resolving the wrong interpreter):** run bare it reported 269 phantom errors on `main`, because it could not see `transformer_lens`. With `--pythonpath .venv/bin/python` it reports 0 errors on both touched files and only 6 repo-wide, all of them optional dependencies that will not install on a Mac (`mamba_lens`, `sparsify`, `dictionary_learning`). CI does not hit this, because `make check-type` runs pyright through poetry where the poetry environment is the interpreter.
 - One HuggingFace gotcha worth recording: repeated unauthenticated gpt2 pulls got me rate-limited, which surfaced as 16 errors in an unrelated test module. Setting `HF_TOKEN` before benchmarking avoids it.
 
-### Steps to Reproduce
+### Steps to reproduce
 
 1. Install SAELens 6.47.0 on a non-CUDA machine, so Apple Silicon or CPU.
 2. Build an `ActivationsStore` on `tiny-stories-1M` with `autocast_lm=True`.
@@ -60,7 +60,7 @@ I needed two machines for this, because the bug behaves differently on CUDA and 
 5. Compare the two tensors elementwise, and watch stderr while step 3 runs.
 6. Separately, on a CUDA machine, build a store with `act_store_device="cuda"` and check `.device` on the tensor `get_activations` returns.
 
-### Expected vs. Actual
+### Expected vs. actual
 
 | Check | Expected | Actual on `main` |
 |---|---|---|
@@ -71,7 +71,7 @@ I needed two machines for this, because the bug behaves differently on CUDA and 
 
 After the fix the activations on MPS differ by 1.3e-3, which is bfloat16 rounding and is the flag doing what it promises. The tensor lands on `cuda:0`. The buffer step drops to 21.4 ms.
 
-### Root Cause
+### Root cause
 
 Two independent CUDA assumptions in `get_activations`, both already avoided by `get_multi_hook_activations` in the same class.
 
@@ -91,7 +91,7 @@ stacked_activations = torch.zeros((n_batches, n_context, self.d_in))
 
 It lands on the default device no matter where the model ran, so the slice assignments below it copy the activations off the accelerator, and `get_raw_llm_batch` immediately moves them straight back with `.to(self.device)`. The existing tests at `test_activations_store.py:174` and `:206` already assert `activations.device == store.device`, and they pass on `main` only because they happen to run on CPU, where the default device and the store device coincide.
 
-### Plan (UMPIRE)
+### The plan
 
 **Understand:** Two device assumptions that fail quietly, one costing precision and one costing a round trip, in a method whose sibling already handles both.
 
@@ -110,7 +110,7 @@ It lands on the default device no matter where the model ran, so the slice assig
 
 **Evaluate:** Four configurations on CUDA, covering store on CUDA and on CPU with autocast off and on, compared by float64 checksum, plus a named test-by-test comparison of the suite before and after.
 
-### Edge Cases Considered
+### Edge cases
 
 - **Which device for the buffer.** Allocating on `layerwise_activations.device` looks equivalent to `self.device` and is worse. With `act_store_device="cpu"` and the model on the GPU it builds the buffer in VRAM and then ships all of it to the host anyway, which measured 141 ms against 55 ms on `main` at 537 MB, and it holds an extra copy in VRAM while doing so. That hurts exactly the users who chose that setting to save memory. I wrote this version first, measured it, and threw it away.
 - **Deleting the buffer entirely** to match the multi-hook path would change behavior twice over. The buffer pins the output to `float32`, and its fixed shape turns a hook whose width disagrees with `d_in` into a `RuntimeError` instead of a silently wrong result, since without it a 128-wide hook against `d_in=64` returns width 128 and nobody notices.
@@ -119,9 +119,9 @@ It lands on the default device no matter where the model ran, so the slice assig
 
 ---
 
-## Phase III: Build
+## Implementation
 
-### Implementation Progress
+### Commits and files
 
 | Commit | Date | Message |
 |---|---|---|
@@ -136,7 +136,7 @@ It lands on the default device no matter where the model ran, so the slice assig
 
 The source change is two lines, which is the point. Almost all the work was proving that those two lines are correct and that the two alternatives I considered are worse.
 
-### Challenges Faced
+### What was hard
 
 **The measurement had to happen on hardware I do not own.** The single best piece of evidence for the buffer half of this fix is that `act_store_device="cuda"` returns a tensor on `cpu` on `main` and on `cuda:0` with the change, and that is impossible to observe on a Mac. Getting a CUDA run meant working out which ROAR queue my free account could actually reach, moving a 5.6 GB environment onto scratch because home had zero bytes free, and pre-caching both models and datasets because compute nodes have no network. That was most of the elapsed time on this contribution.
 
@@ -154,9 +154,9 @@ The source change is two lines, which is the point. Almost all the work was prov
 
 ---
 
-## Phase IV: Submit & Iterate
+## Review and outcome
 
-### Pull Request
+### The pull request
 
 **[decoderesearch/SAELens#722](https://github.com/decoderesearch/SAELens/pull/722)**, opened 2026-07-31 against `decoderesearch/SAELens:main`. It carries no `Fixes #` line, because it is self-sourced and there is no issue to close.
 
@@ -164,7 +164,7 @@ The body follows the repo's `PULL_REQUEST_TEMPLATE.md` and mirrors the shape of 
 
 Two things in the body were deliberate. There is a section on alternatives I ruled out with the measurements behind each, so the reviewer can see the two plausible-looking fixes were considered and rejected on evidence rather than overlooked. And there is an explicit statement that this is not a no-op for existing users, since anyone already setting `autocast_lm=True` on MPS or CPU will now get the bfloat16 forward pass the flag promises, so their activations shift by bfloat16 rounding and their memory use drops. The flag defaults to `False`, so nobody who has not opted in is affected.
 
-### Maintainer Feedback Log
+### Maintainer feedback
 
 | Date | From | Feedback | My response |
 |---|---|---|---|
@@ -173,7 +173,7 @@ Two things in the body were deliberate. There is a section on alternatives I rul
 
 No changes were requested. I read that as the payoff for the body doing the reviewer's work in advance, since the alternatives section answers the two questions a careful reviewer would have asked, and the CUDA checksums answer the third.
 
-### Learnings & Reflections
+### What I learned
 
 **Technical:** Device bugs hide because the failure modes are polite. `torch.autocast` with an unavailable device type does not raise, it warns and disables itself, so a flag that promises bfloat16 quietly delivers float32 and the only symptom is that your numbers are slightly different from a colleague's on a different machine. An undeviced `torch.zeros` behaves the same way, costing a silent round trip rather than an error. The general lesson is that when a call takes a device and you do not pass one, or you pass a constant, that is a bug waiting for someone on different hardware, and the fastest way to find such bugs is to look for a sibling function that already got it right.
 
@@ -181,7 +181,7 @@ No changes were requested. I read that as the payoff for the body doing the revi
 
 **What I'd do differently:** I would set up the CUDA environment before writing the fix rather than after. I built and measured on MPS first, and the strongest evidence in the whole PR, that the tensor comes back on `cpu` when the user asked for `cuda`, only became available once ROAR was working. Doing that first would have shaped the framing earlier. I would also be quicker to write the plausible-looking version of a change purely to measure it, since I nearly shipped `layerwise_activations.device` on the reasoning that it read better, and it was 2.5x slower for the users who care most about memory.
 
-### Resources Used
+### References
 
 - `sae_lens/training/activations_store.py`, particularly `get_multi_hook_activations`, the sibling that already handled both cases correctly.
 - `tests/training/test_activations_store.py`, lines 174 and 206, the existing device assertions that the buffer fix finally makes meaningful.

@@ -1,36 +1,36 @@
 # Invalidate the `HookRegistry` child-registries cache on enable/disable cache
 
-**Project:** [huggingface/diffusers](https://github.com/huggingface/diffusers) · **My fork:** https://github.com/SuryanshSS1011/diffusers
+**Project:** [huggingface/diffusers](https://github.com/huggingface/diffusers)
 **Issue:** [#14037](https://github.com/huggingface/diffusers/issues/14037) · **Pull request:** [#14093](https://github.com/huggingface/diffusers/pull/14093) · **Branch:** `fix/14037-hook-registry-cache-invalidation`
 **Status:** Open. CI green, test rework pushed after four review rounds.
 
 ---
 
-## Phase I: Issue Selection
+## The issue
 
-### Why I Chose This Issue
+### Why I picked it
 
 diffusers is HuggingFace's diffusion-model library. I wanted a self-contained correctness bug in core infrastructure that is verifiable on CPU without a GPU, and this one sits in the hook and caching system that every diffusion accelerator in the library relies on, covering `FirstBlockCache`, `FasterCache` and friends. My learning goal was stale-cache and invalidation bugs in a framework with a plugin-style hook registry, which is a class of bug where the wrong fix location is much more tempting than the right one.
 
 The issue ships a fully self-contained reproduction, so I could confirm the failure before writing anything.
 
-### Problem Summary
+### What was wrong
 
 `HookRegistry._get_child_registries()` memoizes the child-module registries it discovers by walking `named_modules()`, and nothing ever invalidates that memo. `enable_cache()` and `disable_cache()` add and remove block-level hooks, changing which modules carry a `_diffusers_hook`, so a registry cached before caching was enabled is wrong afterwards and the next cached forward dies with `ValueError: No context is set`. It matters because the trigger is an ordinary usage order, meaning you run the pipeline once and then turn caching on, and the error message points nowhere near the actual cause. I chose it because it is a real correctness bug in shared infrastructure, reproducible on CPU in seconds, and genuinely unclaimed.
 
-### Issue Vetting
+### Before I started
 
 I verified it was open and unassigned across all PR states, and scanned open PRs by topic rather than only by issue number, since competing PRs often reference an issue by subject line. I posted a claim comment on the issue on 2026-06-29 before opening the PR:
 
 > Hey, I have been looking into this and have a fix planned, so I can take it on if no one else is currently working on it. Will follow up with a PR containing the fix soon!
 
-### Where It Lives
+### Where it lives
 
 - `src/diffusers/hooks/hooks.py`, holding `HookRegistry._get_child_registries()` and `_child_registries_cache`, which is populated and never cleared by `register_hook` or `remove_hook`.
 - `src/diffusers/models/cache_utils.py`, holding `enable_cache()` and `disable_cache()`, which mutate the hook tree from the root module.
 - `tests/hooks/test_hooks.py` and `tests/pipelines/test_pipelines_common.py` (`FirstBlockCacheTesterMixin`), the two test surfaces this ended up touching.
 
-### Acceptance Criteria
+### What counts as done
 
 1. The issue's exact reproduction stops raising `ValueError: No context is set`.
 2. Normal-order usage, meaning `enable_cache` then `cache_context`, and the `disable_cache` path are unaffected.
@@ -39,9 +39,9 @@ I verified it was open and unassigned across all PR states, and scanned open PRs
 
 ---
 
-## Phase II: Reproduce & Plan
+## Diagnosis and plan
 
-### Environment Setup
+### Environment setup
 
 I used diffusers' `CONTRIBUTING.md` for the editable install and `make quality` loop, and read the PR template, which has an explicit AI-assistance disclosure section, before opening.
 
@@ -49,7 +49,7 @@ I used diffusers' `CONTRIBUTING.md` for the editable install and `make quality` 
 - **Challenge (`make quality` is stricter than it looks):** a bare `ruff check` passes while CI still fails, because `make quality` also runs `doc-builder style`, which wraps docstrings at 119 columns, and `check_doc_toc`. My first push failed `check_code_quality` on a docstring line-length restyle. I resolved it by running the full `make quality` before pushing and reverting unrelated files that `make style` reformats, so the diff stays scoped.
 - **Challenge (CI is gated for first-time contributors):** only the metadata checks (`fixes-issue`, `missing-tests`, `label` and `size-label`) run until a maintainer approves the heavier workflows, so early red or absent CI is not necessarily signal.
 
-### Steps to Reproduce
+### Steps to reproduce
 
 1. Install `diffusers` from `main` in editable mode, and CPU is fine.
 2. Build a small randomly-initialized `FluxTransformer2DModel`, which the issue's script does.
@@ -61,19 +61,19 @@ I used diffusers' `CONTRIBUTING.md` for the editable install and `make quality` 
 4. Now enable caching with `model.enable_cache(FirstBlockCacheConfig(threshold=0.2))`.
 5. Run the same context-wrapped forward again.
 
-### Expected vs. Actual
+### Expected vs. actual
 
 **Actual:** step 5 raises `ValueError: No context is set`.
 
 **Expected:** the second forward runs with caching active, because enabling caching after a warmup pass is an ordinary usage order rather than a misuse.
 
-### Root Cause
+### Root cause
 
 `HookRegistry._get_child_registries()` caches the list of child registries it finds by walking `named_modules()`. When `cache_context()` is first entered while no block hooks exist, which is the warmup pass, the parent registry caches an incomplete child list. `enable_cache(FirstBlockCacheConfig(...))` then registers block hooks, but `_set_context()` still iterates the stale cached list, so the new block `StateManager`s never receive a context and the next cached forward raises.
 
 The subtle part is where to invalidate. The staleness originates in `register_hook` and `remove_hook`, but those run on the child block registries, which cannot reach the parent registry whose cache is stale. `enable_cache` and `disable_cache` operate on the root module, so they are the only place with the whole subtree in scope.
 
-### Plan (UMPIRE)
+### The plan
 
 **Understand:** A memo of which children have hooks outlives the event that changes which children have hooks.
 
@@ -93,7 +93,7 @@ The subtle part is where to invalidate. The staleness originates in `register_ho
 
 **Evaluate:** Bite-test both directions, so revert the source fix and confirm the new test fails with the original `ValueError`, then restore it and confirm it passes.
 
-### Edge Cases Considered
+### Edge cases
 
 - **Normal order**, meaning `enable_cache` then `cache_context`, must be unaffected.
 - **`disable_cache`** leaves a cache that is stale in the other direction, with children that no longer have hooks, so it needs the same invalidation rather than only `enable_cache`.
@@ -101,9 +101,9 @@ The subtle part is where to invalidate. The staleness originates in `register_ho
 
 ---
 
-## Phase III: Build
+## Implementation
 
-### Implementation Progress
+### Commits and files
 
 | Commit | Date | Message |
 |---|---|---|
@@ -123,7 +123,7 @@ The subtle part is where to invalidate. The staleness originates in `register_ho
 
 The source fix has been stable since the first commit, and every subsequent commit is test work driven by review.
 
-### Challenges Faced
+### What was hard
 
 The obstacle here was not the fix but writing a test that actually reproduces the reported failure, and it took three rounds to get right.
 
@@ -145,15 +145,15 @@ The through-line is that a regression test has to fail for the reported reason t
 
 ---
 
-## Phase IV: Submit & Iterate
+## Review and outcome
 
-### Pull Request
+### The pull request
 
 **[huggingface/diffusers#14093](https://github.com/huggingface/diffusers/pull/14093)**, opened 2026-06-29 against `huggingface/diffusers:main`, referencing the issue with a close keyword, and the `fixes-issue` metadata check passes. The body opens with the user-visible failure and the stale-cache diagnosis, then the fix, then the placement question I deliberately surfaced for the reviewer, which is why invalidation belongs at the root `enable_cache` and `disable_cache` rather than in `register_hook` and `remove_hook`. The diffusers template's AI-assistance disclosure section is filled in honestly.
 
 An automated reviewer (`sergereview`) also assessed the change on 2026-07-02 and agreed with the stale-cache diagnosis and the targeting.
 
-### Maintainer Feedback Log
+### Maintainer feedback
 
 | Date | From | Feedback | My response |
 |---|---|---|---|
@@ -163,7 +163,7 @@ An automated reviewer (`sergereview`) also assessed the change on 2026-07-02 and
 | 2026-07-13 | sayakpaul | The test still assumes the pipeline enters the context internally and omits the issue's second context entry, so "I think this test is still incomplete." | Agreed on the thread, then pushed `d80bba85e`, which drives the two `cache_context("cond")` forwards explicitly, asserts the transformer was called, and which I confirmed fails on `main` and passes with the fix across all FirstBlockCache pipelines. |
 | 2026-07-24 | Me | Own update, no maintainer feedback in this window. | Gentle bump summarizing the rework, and I am awaiting the next review. |
 
-### Learnings & Reflections
+### What I learned
 
 **Technical:** Memoization bugs are located by asking what event invalidates this and then who can see the whole structure when that event happens, and those are usually two different places. Here the staleness originates in `register_hook` and `remove_hook` but can only be fixed from `enable_cache` and `disable_cache`, because the child registry cannot reach the parent whose cache is wrong. Fixing it at the origin would have been the intuitive move and would not have worked.
 
@@ -171,7 +171,7 @@ An automated reviewer (`sergereview`) also assessed the change on 2026-07-02 and
 
 **What I'd do differently:** I would write the end-to-end test first, from the issue's script, and only then the unit test, because reversing that order would have compressed four rounds into roughly one. I would also verify against the repo's real quality gate, meaning `make quality` rather than `ruff check`, before the first push, since the first CI failure was self-inflicted and cost a round trip.
 
-### Resources Used
+### References
 
 - Issue #14037 and its self-contained reproduction script.
 - `src/diffusers/hooks/hooks.py` and `src/diffusers/models/cache_utils.py`.

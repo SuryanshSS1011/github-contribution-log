@@ -1,14 +1,14 @@
 # Exempt `sys.version` family comparisons from PLR2004
 
-**Project:** [astral-sh/ruff](https://github.com/astral-sh/ruff) · **My fork:** https://github.com/SuryanshSS1011/ruff
+**Project:** [astral-sh/ruff](https://github.com/astral-sh/ruff)
 **Issue:** [#25588](https://github.com/astral-sh/ruff/issues/25588) · **Pull request:** [#25743](https://github.com/astral-sh/ruff/pull/25743) · **Branch:** `plr2004-sys-version-exemption`
 **Status:** **Merged** 2026-06-10 (merge commit `7fbef674f`). Issue closed.
 
 ---
 
-## Phase I: Issue Selection
+## The issue
 
-### Why I Chose This Issue
+### Why I picked it
 
 ruff is Astral's Rust-based Python linter. It has the same engineering culture as uv, with fast review, strict CI and clear scope guidance from maintainers, but it is a different subsystem, which diversifies my work away from package-manager internals. My learning goal was to understand how a linter decides that a literal is meaningful rather than magic, which is a semantic-model question rather than a syntax one.
 
@@ -23,15 +23,15 @@ I picked it after live-verifying several other candidates and finding them taken
 
 ruff #25588 was the first remaining clean candidate, being open, unassigned, free of an in-flight PR, and with a maintainer who had already blessed the direction in-thread.
 
-### Problem Summary
+### What was wrong
 
 PLR2004 flags literal values in comparisons, but its allow-list has no way to recognize that the other operand is version-derived, so a conventional Python-version guard like `sys.implementation.version[0] >= 3` gets flagged as a magic value. Users are then pushed toward a `noqa` or an invented `PY3 = 3` constant, and both of those make the code worse rather than clearer. It matters because version guards are extremely common in real Python, so the false positive is high-frequency and pushes people to disable a useful rule. I chose it because two maintainers had already argued the scope out in the thread, which meant I could work on the semantics instead of negotiating the design.
 
-### Issue Vetting
+### Before I started
 
 Open, unassigned, with no in-flight PR touching `magic_value_comparison.rs`. I did not post a claim comment, because the maintainers had already settled the direction in-thread and ruff's norm for a single-rule change of this size is to open the PR. In hindsight a one-line "taking this" would have cost nothing, which I cover under What I'd do differently.
 
-### Maintainer Context
+### Prior discussion
 
 The scope was decided in the issue thread before I arrived, and reading it carefully is what set my boundaries.
 
@@ -45,7 +45,7 @@ The scope was decided in the issue thread before I arrived, and reading it caref
 
 That set the scope precisely as `sys.version` and `sys.implementation.version` and nothing broader. I read `sys.version_info` as deliberately excluded, since Micha did not name it and the ecosystem uses it heavily enough that a silent exemption could reduce linting coverage in a surprising way. There was also related work in [PR #18961](https://github.com/astral-sh/ruff/pull/18961) by DaniBodor, adding a user-configurable `pylint.allow_magic_values` setting, which is complementary rather than overlapping.
 
-### Acceptance Criteria
+### What counts as done
 
 1. `sys.version` and `sys.implementation.version` comparands exempt their literal operand from PLR2004.
 2. Subscripts and attribute access on either, such as `sys.version[0]` and `sys.implementation.version.major`, are recognized.
@@ -55,9 +55,9 @@ That set the scope precisely as `sys.version` and `sys.implementation.version` a
 
 ---
 
-## Phase II: Reproduce & Plan
+## Diagnosis and plan
 
-### Environment Setup
+### Environment setup
 
 I used ruff's `CONTRIBUTING.md` for the test and snapshot workflow, and read the CI workflow to match the exact lint invocations.
 
@@ -66,7 +66,7 @@ I used ruff's `CONTRIBUTING.md` for the test and snapshot workflow, and read the
 - **Challenge (generated files):** ruff regenerates schemas and docs via `cargo dev generate-all`, and CI fails if generated output drifts. I ran it to confirm nothing needed regeneration, since this change adds no settings.
 - The test loop is fast, because `cargo test --package ruff_linter --lib pylint` runs the whole pylint rule set in seconds.
 
-### Steps to Reproduce
+### Steps to reproduce
 
 1. Save this as `repro.py`:
    ```python
@@ -78,7 +78,7 @@ I used ruff's `CONTRIBUTING.md` for the test and snapshot workflow, and read the
 2. Build ruff from `main`, which was 0.15.16 at the time.
 3. Run `ruff check --select PLR2004 repro.py`.
 
-### Expected vs. Actual
+### Expected vs. actual
 
 **Actual:**
 
@@ -88,11 +88,11 @@ repro.py:3:30: PLR2004 Magic value used in comparison, consider replacing `3` wi
 
 **Expected:** no diagnostic. `sys.implementation.version[0]` is the standard way to discriminate CPython major versions when `sys.version_info` is unavailable or when comparing a non-CPython implementation's version tuple, so the `3` is a version tag rather than a magic number. The same applies to `sys.version >= "3.10"`.
 
-### Root Cause
+### Root cause
 
 `magic_value_comparison` in `crates/ruff_linter/src/rules/pylint/rules/magic_value_comparison.rs` examines each comparand in isolation. It has a small hard-coded allow-list of `0`, `1`, `""`, `"__main__"` and the boolean and None family, plus a user-configurable `lint.pylint.allow-magic-value-types` that widens by type. There is no mechanism to consider the literal's neighbor, so it cannot know the literal is being compared against a version-derived operand. The fix therefore has to add neighbor-awareness to the diagnostic loop rather than another entry to the allow-list.
 
-### Plan (UMPIRE)
+### The plan
 
 **Understand:** A literal compared against a version operand is meaningful rather than magic, so the rule needs to look at the operand next to the literal before reporting.
 
@@ -117,7 +117,7 @@ repro.py:3:30: PLR2004 Magic value used in comparison, consider replacing `3` wi
 
 **Evaluate:** The snapshot diff should show exactly one added violation, the deliberately still-flagged `sys.version_info[0] >= 3` case, which proves the seven exempt cases now pass silently.
 
-### Edge Cases Considered
+### Edge cases
 
 - **Chained comparisons** such as `0 < sys.implementation.version[0] < 4`, where the literal has two neighbors, so the check must look both directions from a middle position.
 - **Literal on either side**, covering `sys.version[0] >= "3"` and `3 <= sys.implementation.version[0]`.
@@ -126,9 +126,9 @@ repro.py:3:30: PLR2004 Magic value used in comparison, consider replacing `3` wi
 
 ---
 
-## Phase III: Build
+## Implementation
 
-### Implementation Progress
+### Commits and files
 
 | Commit | Date | Message |
 |---|---|---|
@@ -161,7 +161,7 @@ Before review this used `segments.get(..N)` prefix matching, and ntBre asked for
 
 **Test-location change during review:** my first cut extended the existing fixture and snapshot pair, which meant `resources/test/fixtures/pylint/magic_value_comparison.py` plus regenerating `PLR2004_magic_value_comparison.py.snap` and `allow_magic_value_types.snap`. ntBre asked for the new cases in ruff's newer mdtest format instead, so the merged PR adds `resources/mdtest/pylint/magic-value-comparison.md` and leaves the legacy fixture alone.
 
-### Challenges Faced
+### What was hard
 
 The hard part was reading scope out of two conflicting maintainer comments. `ntBre` opposed the exception entirely while `MichaReiser` allowed it for `sys.version` and "maybe" `sys.implementation.version`. I took the strict reading and deliberately excluded `sys.version_info`, then encoded that omission as a fixture case so it could not be widened by accident.
 
@@ -180,15 +180,15 @@ In review, ntBre, the maintainer who had originally pushed back, asked to includ
 
 ---
 
-## Phase IV: Submit & Iterate
+## Review and outcome
 
-### Pull Request
+### The pull request
 
 **[astral-sh/ruff#25743](https://github.com/astral-sh/ruff/pull/25743)**, opened 2026-06-08 against `astral-sh/ruff:main`, referencing the issue with a close keyword. `ntBre` was both auto-assigned and self-requested as reviewer.
 
 **AI-policy incident:** the PR body I first posted had been drafted with AI help and posted without enough rewriting in my own voice. ntBre flagged it the same day, asking "Could you confirm that you've read and adhered to our AI Policy? The summary here gives me the impression that it was written by an LLM." I acknowledged it honestly, since the code was mine and the prose was not, read the [AI Policy](https://github.com/astral-sh/.github/blob/main/AI_POLICY.md), and he asked me to rewrite the summary and mark the PR ready. I rewrote it in my own words and re-submitted. The operating rule I took from it is that AI for investigation and code-level decisions is fine, while every maintainer-facing word in a PR body, issue reply or review response is one I type myself.
 
-### Maintainer Feedback Log
+### Maintainer feedback
 
 | Date | From | Feedback | My response |
 |---|---|---|---|
@@ -196,7 +196,7 @@ In review, ntBre, the maintainer who had originally pushed back, asked to includ
 | 2026-06-09 | ntBre | Five points, covering (1) using slice-with-rest patterns instead of `segments.get(..N)`, (2) migrating the new tests to mdtest, (3) "I also think we should just handle `sys.version_info`. Is there a reason not to?", (4) trimming the docstring paragraph, and (5) dropping the `Vec<&Expr>::collect()` and index arithmetic in favor of a `peekable()` iterator with a `previous` slot. | Addressed all five in one force-pushed revision, with a per-point summary comment on the thread, including that clippy wanted the slice patterns nested. |
 | 2026-06-10 | ntBre | **Approved** with "Nice, thank you!" | Merged the same day as `7fbef674f`. |
 
-### Learnings & Reflections
+### What I learned
 
 **Technical:** The reusable insight is that a magic value is a property of the comparison rather than of the literal, so the fix had to add neighbor-awareness to the diagnostic loop, which is a different shape from extending an allow-list. Finding `is_sys` and `map_subscript` first saved me from inventing a worse mechanism, because the codebase had already solved "recognize a `sys.*` operand through subscripts" twice and the right move was to apply the blessed pattern rather than write a third one. I also learned to treat the ecosystem-check bot as real before-and-after evidence, since 0 added and 2 removed violations across 56 projects is a much stronger statement than any fixture I could write.
 
@@ -204,7 +204,7 @@ In review, ntBre, the maintainer who had originally pushed back, asked to includ
 
 **What I'd do differently:** I would have written the PR body myself from the first keystroke, and that is now a standing rule. I would have put the scope justification for excluding `sys.version_info` explicitly in the PR body instead of only in my head, because had it been visible, ntBre's question would have been answered before he asked it and I might have noticed my own reasoning was thin. I would also post a one-line "taking this" on the issue even when the repo's norm is PR-first, since it costs nothing and makes the work visible to anyone else reading the thread.
 
-### Resources Used
+### References
 
 - Issue thread: https://github.com/astral-sh/ruff/issues/25588
 - PR: https://github.com/astral-sh/ruff/pull/25743

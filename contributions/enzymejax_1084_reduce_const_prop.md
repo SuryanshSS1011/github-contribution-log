@@ -1,14 +1,14 @@
 # Constant-propagate `stablehlo.reduce` in Enzyme-JAX
 
-**Project:** [EnzymeAD/Enzyme-JAX](https://github.com/EnzymeAD/Enzyme-JAX) · **My fork:** https://github.com/SuryanshSS1011/Enzyme-JAX
+**Project:** [EnzymeAD/Enzyme-JAX](https://github.com/EnzymeAD/Enzyme-JAX)
 **Issue:** [#1084](https://github.com/EnzymeAD/Enzyme-JAX/issues/1084) · **Pull request:** [#2524](https://github.com/EnzymeAD/Enzyme-JAX/pull/2524) · **Branch:** `reduce-const-prop`
 **Status:** Open. Reviewed, blocked on a scope decision about extending the fold to add and mul.
 
 ---
 
-## Phase I: Issue Selection
+## The issue
 
-### Why I Chose This Issue
+### Why I picked it
 
 Enzyme-JAX is the MLIR/StableHLO front end for the Enzyme autodiff framework from Will Moses' group at MIT, and it is the bridge from JAX-level programs into Enzyme's gradient generation over StableHLO. Of every candidate I evaluated, this is the closest match to my Causality-Aware-RL and SecureCodeRL research thread, since it covers ML compilers, autodiff-adjacent transforms and real production users. My learning goal was to get hands-on with MLIR's pattern-rewrite model, and specifically with how independent rewrite patterns cascade to produce a fold that no single pattern performs.
 
@@ -16,21 +16,21 @@ Issue #1084 asks for constant propagation on `stablehlo.reduce`, so that when th
 
 I picked this after eliminating several other candidates with hard phantom checks. The `OptimizationBarrierOp` item from Enzyme-JAX #152's checklist already worked via the generic batch-op fallback, several llama.cpp CUDA candidates were already-implemented phantoms, and uv #4824 turned out to be closed by a prior merged PR.
 
-### Problem Summary
+### What was wrong
 
 `stablehlo.reduce` over splat-constant inputs with a pure binary body such as `and` or `or` is algebraically determined at compile time, but Enzyme's default `--enzyme-hlo-opt` pipeline leaves it in the IR. Upstream StableHLO's `stablehlo-aggressive-folder` pass already folds exactly this shape, so Enzyme is leaving a known and free simplification on the table in the pipeline that every JAX-through-Enzyme program runs. It matters because an unfolded reduce blocks downstream shape and constant reasoning rather than only costing one instruction. I chose it because it is a bounded compiler-optimization task in the ML-compiler space I want to work in, with an upstream implementation available as a correctness reference.
 
-### Issue Vetting
+### Before I started
 
 Open and unassigned. Before writing code I built `enzymexlamlir-opt` from `main` and confirmed the fold does not happen under `--enzyme-hlo-opt`, then posted a design question rather than a claim comment, since Enzyme-JAX has no assignment culture and the norm is to open a PR first.
 
-### Where It Lives
+### Where it lives
 
 - `src/enzyme_ad/jax/Passes/EnzymeHLOOpt.cpp`, the roughly 36,000-line file holding nearly all of Enzyme's HLO optimization patterns and `EnzymeHLOOptPass::runOnOperation`.
 - `src/enzyme_ad/jax/TransformOps/TransformOps.td` and `src/enzyme_ad/jax/Integrations/c/EnzymeXLA.cpp`, for tablegen and pipeline registration, added on maintainer request.
 - `test/lit_tests/reduce_const_prop.mlir`, a new lit test.
 
-### Maintainer Context
+### Prior discussion
 
 I opened with a design question on the issue on [2026-06-04](https://github.com/EnzymeAD/Enzyme-JAX/issues/1084), asking whether to wire the whole upstream pass in or import the relevant patterns inline, with the probe results attached. `wsmoses`, the Enzyme lead, replied in 67 minutes:
 
@@ -38,7 +38,7 @@ I opened with a design question on the issue on [2026-06-04](https://github.com/
 
 That single sentence set the scope as patterns rather than the whole pass, and "of relevance" rather than everything.
 
-### Acceptance Criteria
+### What counts as done
 
 1. The issue's exact MLIR folds to `stablehlo.constant dense<true> : tensor<i1>` plus `return` under `--enzyme-hlo-opt`.
 2. The sibling `or` and `false` case folds identically.
@@ -48,9 +48,9 @@ That single sentence set the scope as patterns rather than the whole pass, and "
 
 ---
 
-## Phase II: Reproduce & Plan
+## Diagnosis and plan
 
-### Environment Setup
+### Environment setup
 
 I used Enzyme-JAX's `DEVDOCS.md` for the Bazel invocation and lit-test layout, and read the CI workflow to match the build configuration.
 
@@ -59,7 +59,7 @@ I used Enzyme-JAX's `DEVDOCS.md` for the Bazel invocation and lit-test layout, a
 - **Challenge (toolchain pinning):** Bazel 7.7.0 is pinned through `USE_BAZEL_VERSION` and gcc 13.2.0 through `module load gcc/13.2.0`, and without the pins the build picks up the cluster default and fails.
 - **Cost:** the first clean build took about 87 minutes, produced about 10 GB of cache and a 256 MB binary. An incremental rebuild after touching `EnzymeHLOOpt.cpp` takes about 5 minutes, and that ratio is what made this issue tractable at all.
 
-### Steps to Reproduce
+### Steps to reproduce
 
 1. On a ROAR compute node, in `Enzyme-JAX/`:
    ```sh
@@ -84,7 +84,7 @@ I used Enzyme-JAX's `DEVDOCS.md` for the Bazel invocation and lit-test layout, a
 4. For contrast, run the same file through `--canonicalize` and through
    `--pass-pipeline="builtin.module(func.func(stablehlo-aggressive-folder))"`.
 
-### Expected vs. Actual
+### Expected vs. actual
 
 | Pipeline | Result |
 |---|---|
@@ -101,7 +101,7 @@ return %c : tensor<i1>
 
 The three-way comparison is what localized the problem, because it shows the fold is implemented upstream and simply never reached from Enzyme's default pipeline.
 
-### Root Cause
+### Root cause
 
 Enzyme's `EnzymeHLOOptPass` does not include the upstream folder's reduce patterns. Reading `StablehloAggressiveFolder.cpp` showed the fold is not one pattern but a cascade of three steps:
 
@@ -111,7 +111,7 @@ Enzyme's `EnzymeHLOOptPass` does not include the upstream folder's reduce patter
 
 Step 2 is load-bearing and Enzyme already provides it. I verified that separately with a dedicated probe, which showed that `--enzyme-hlo-opt` does already fold `and(true, true)` to `true` via the existing `AndSimplify` and `OrSimplify`. So importing patterns 1 and 3 closes the cascade without importing a binop folder.
 
-### Plan (UMPIRE)
+### The plan
 
 **Understand:** A specific class of `stablehlo.reduce` with splat-constant inputs and a single binop body should compile-time-fold. Upstream implements it as a cascade, and Enzyme's default pipeline never invokes the two ends of that cascade.
 
@@ -127,22 +127,22 @@ Step 2 is load-bearing and Enzyme already provides it. I verified that separatel
 7. Add `test/lit_tests/reduce_const_prop.mlir` with positive, sibling and negative cases.
 8. Rebuild, taking about 5 minutes incrementally, and run the new test plus a broad sweep of existing reduce, const and and lit tests.
 
-**Implement:** Branch `reduce-const-prop`, with two functional commits described in Phase III.
+**Implement:** Branch `reduce-const-prop`, with two functional commits described below.
 
 **Review:** My self-checklist covered provenance named in source comments and the PR body, adaptation to `CheckedOpRewritePattern` staying faithful to upstream semantics, out-of-scope upstream patterns (`FoldReduceOpReducingZeroDims` and `FoldReduceOpWithRedundantResults`) deliberately not imported per the "of relevance" framing, a lit test covering positive, sibling and negative cases, 23 existing lit tests passing, no new compiler warnings, and comments kept to one line each focused on provenance rather than restating the code.
 
 **Evaluate:** The issue's exact MLIR collapses to `stablehlo.constant` plus `return`, `bazel test //test/lit_tests:reduce_const_prop.mlir.test` passes, and 23 sibling tests are unaffected.
 
-### Edge Cases Considered
+### Edge cases
 
 - **Non-constant input** must be left alone, which is encoded as a negative lit case.
 - **Idempotency of the body op:** This is the one that turned into an open design question. The upstream pattern only handles `and` and `or`, and the cascade only terminates correctly for those, because they are idempotent and `f(x, x) = f(x, …, x)` regardless of element count. For `add` and `mul` the result depends on the number of reduced elements, so `reduce(splat<2>, init=0){add}` over 4 elements must fold to `8` and not `2`. Extending to add/mul therefore needs a new pattern computing the closed form (`init + N*x` and `init * x^N`) with integer-overflow and float-precision handling, rather than a wider import.
 
 ---
 
-## Phase III: Build
+## Implementation
 
-### Implementation Progress
+### Commits and files
 
 | Commit | Date | Message |
 |---|---|---|
@@ -164,7 +164,7 @@ Step 2 is load-bearing and Enzyme already provides it. I verified that separatel
 
 **Design decision (two patterns plus existing simplifications, not one monolithic pattern):** the fold structurally is a cascade. A single pattern doing all three steps would duplicate `AndSimplify` and `OrSimplify` logic and drift from it over time, so cascading through the existing infrastructure is more faithful to MLIR's rewrite model.
 
-### Challenges Faced
+### What was hard
 
 The hard part was verifying a cascade rather than a single pattern. Importing patterns 1 and 3 only works if Enzyme independently supplies step 2, and nothing in the upstream file says so. Reading the code was not conclusive, so I built a separate probe that ran `and(true, true)` through `--enzyme-hlo-opt` and confirmed the fold. That one measurement was load-bearing for the whole design, because it is why the PR imports two patterns instead of three or more, and it is what let me answer wsmoses' scope framing precisely.
 
@@ -182,15 +182,15 @@ The second challenge is unresolved and is why this PR is still open, and it is t
 
 ---
 
-## Phase IV: Submit & Iterate
+## Review and outcome
 
-### Pull Request
+### The pull request
 
 **[EnzymeAD/Enzyme-JAX#2524](https://github.com/EnzymeAD/Enzyme-JAX/pull/2524)**, opened 2026-06-04 against `EnzymeAD/Enzyme-JAX:main`, referencing `Closes #1084`. The body leads with the missing fold and the three-pipeline probe that localized it, then the cascade analysis, then the two imported patterns with upstream provenance, then the lit-test cases. wsmoses was already engaged on the issue, so the PR landed directly in his queue and he reviewed three minutes after submission.
 
 Codecov reports all modified and coverable lines covered.
 
-### Maintainer Feedback Log
+### Maintainer feedback
 
 | Date | From | Feedback | My response |
 |---|---|---|---|
@@ -199,7 +199,7 @@ Codecov reports all modified and coverable lines covered.
 | 2026-06-04 | wsmoses (review) | "can we extend this to also support add/mul, including non constants? [and appropriate tests]" | Answered with the idempotency analysis, that the upstream pattern only handles idempotent body ops and the cascade only terminates for those, and that add/mul need a closed-form pattern (`init + N*x` and `init * x^N`) with overflow and float-precision handling. Asked for a decision on that scope before building it. |
 | 2026-06-28 | wsmoses | "On travel right now adding some other reviewers", in reply to my bump. | Kept the branch rebased on `main` with merges on 2026-07-23 and 2026-07-29 and clang-formatted it, and I am still awaiting the add/mul decision. |
 
-### Learnings & Reflections
+### What I learned
 
 **Technical:** MLIR folds are frequently emergent rather than implemented, since no single pattern in the upstream file performs this fold and the fold I wanted is what three independent rewrites produce when composed. That changes how you verify a change, because the useful experiment was not whether my pattern matches but whether the pipeline already supplies the middle of the cascade. The second technical lesson is that idempotency is the hidden precondition of the whole design, since `and` and `or` fold without knowing the element count while `add` and `mul` cannot. That distinction is invisible until you try to generalize, and it is exactly the kind of thing worth surfacing to a maintainer rather than guessing.
 
@@ -207,7 +207,7 @@ Codecov reports all modified and coverable lines covered.
 
 **What I'd do differently:** I would fold the tablegen registration into the first commit. The dev docs cover it, and it was flagged in review three minutes after I opened, so a reviewable-quality PR should not need a maintainer to point at documentation I could have read first. I would also lead the PR body with the idempotency limitation rather than leave it for the review thread, since it is the single most important thing a reviewer needs to know about how far this generalizes.
 
-### Resources Used
+### References
 
 - Issue thread: https://github.com/EnzymeAD/Enzyme-JAX/issues/1084
 - Upstream patterns: [`StablehloAggressiveFolder.cpp`](https://github.com/openxla/stablehlo/blob/main/stablehlo/transforms/optimization/StablehloAggressiveFolder.cpp)

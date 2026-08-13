@@ -1,14 +1,14 @@
 # Model `java.util.Optional` so Pulse catches resource leaks through it
 
-**Project:** [facebook/infer](https://github.com/facebook/infer) · **My fork:** https://github.com/SuryanshSS1011/infer
+**Project:** [facebook/infer](https://github.com/facebook/infer)
 **Issue:** [#1951](https://github.com/facebook/infer/issues/1951) · **Pull request:** [#2068](https://github.com/facebook/infer/pull/2068) · **Branch:** `pulse-model-optional-resource-leak`
 **Status:** **Merged** 2026-07-03 (merge commit `f123c84`). Issue closed.
 
 ---
 
-## Phase I: Issue Selection
+## The issue
 
-### Why I Chose This Issue
+### Why I picked it
 
 Infer is Meta's static analyzer and Pulse is its memory-and-resource lifetime checker. I wanted a contribution in the static-analysis and program-analysis space, which is the closest OSS analogue to my research interests, and my learning goal was to understand how an abstract interpreter models library types, meaning the mechanism by which a checker knows what `Optional.get()` does without analyzing the JDK.
 
@@ -18,23 +18,23 @@ This one was a clean fit, because a maintainer (`davidpichardie`) had already co
 
 A confirmed bug with a prescribed approach and a worked example is the combination that makes an OSS PR actually land, which made it a strong pick despite the repo being OCaml with a heavy build.
 
-### Problem Summary
+### What was wrong
 
 Pulse attaches a `JavaResource` obligation when a resource is constructed and reports `PULSE_RESOURCE_LEAK` if it becomes unreachable without being closed, but it has no model for `java.util.Optional`, so a resource wrapped in one such as `Optional.of(new FileInputStream(...))` becomes invisible to that reachability reasoning and the leak goes unreported. It matters because this is a false negative in a leak checker, and silent under-reporting is worse than noise since nobody knows to look. I chose it because a maintainer had already confirmed it and named both the file and the model to mirror, so the work was implementation and verification rather than negotiation.
 
-### Issue Vetting
+### Before I started
 
 Before starting I re-verified the issue was still open, unassigned and free of an in-flight PR, and following my own rule about old issues I checked that `java.util.Optional` was genuinely still unmodeled on current `main` rather than fixed but unclosed. I then posted a scoping comment on the issue on 2026-06-29 rather than just claiming it, because on close reading the shape did not look identical to `Boolean`:
 
 > Following your suggestion I started from the `java.lang.Boolean` model in `PulseModelsJava.ml`. While scoping it I think the precise shape here may be a bit different from `Boolean` [...] so I wanted to check the approach with you before opening a PR.
 
-### Where It Lives
+### Where it lives
 
 - `infer/src/pulse/PulseModelsJava.ml`, the Java model table, where the `Boolean` model around line 570 is the structural template.
 - `infer/tests/codetoanalyze/java/pulse/ResourceLeaks.java`, the Pulse Java test corpus.
 - `infer/tests/codetoanalyze/java/pulse/issues.exp`, the expected-output file that encodes which reports must fire.
 
-### Acceptance Criteria
+### What counts as done
 
 1. The issue's repro reports `PULSE_RESOURCE_LEAK`.
 2. A wrapped resource that is closed via `get().close()` stays clean, with no false positive.
@@ -43,9 +43,9 @@ Before starting I re-verified the issue was still open, unassigned and free of a
 
 ---
 
-## Phase II: Reproduce & Plan
+## Diagnosis and plan
 
-### Environment Setup
+### Environment setup
 
 I used infer's `INSTALL.md` and `Makefile` targets plus `infer.opam.locked` as the authority on toolchain versions, and built on Penn State's ROAR Collab HPC cluster rather than locally, since I have no root there and my home directory is near quota.
 
@@ -54,7 +54,7 @@ I used infer's `INSTALL.md` and `Makefile` targets plus `infer.opam.locked` as t
 - **Challenge (long builds over an SSH session):** a full infer build outlives a login session, so builds were detached with `setsid` and polled rather than run in the foreground.
 - The scratch filesystem rather than home holds the opam root and build tree, since home is capped and a full infer build does not fit.
 
-### Steps to Reproduce
+### Steps to reproduce
 
 1. Build infer from source at a known commit, using a stock build with no patch.
 2. Save the issue's repro as `Main.java`:
@@ -69,7 +69,7 @@ I used infer's `INSTALL.md` and `Makefile` targets plus `infer.opam.locked` as t
 3. Run `infer run --pulse-only -- javac Main.java`.
 4. Read the report.
 
-### Expected vs. Actual
+### Expected vs. actual
 
 **Actual, on a stock build:** `No issues found`. The resource is allocated, wrapped and never closed, and Pulse says nothing.
 
@@ -77,11 +77,11 @@ I used infer's `INSTALL.md` and `Makefile` targets plus `infer.opam.locked` as t
 
 **After the model, on the same binary and commit:** `Main.java:9: error: PULSE_RESOURCE_LEAK`. Running the before and after against a stock build at the same commit is what makes the fix causally responsible rather than incidentally correlated.
 
-### Root Cause
+### Root cause
 
 Pulse's reasoning is reachability-based, since the `JavaResource` attribute lives on the resource's own allocation and a leak is reported when that allocation becomes unreachable without a close. `Optional` is an ordinary library class with no model, so Pulse cannot relate `Optional.of(x)` to `x`, which makes the wrapper opaque, the wrapped value's reachability untrackable through it, and the obligation neither discharged nor reported. The gap is a missing model in `PulseModelsJava.ml` rather than a defect in the leak logic.
 
-### Plan (UMPIRE)
+### The plan
 
 **Understand:** A wrapper type with no model breaks the reachability chain that leak detection depends on.
 
@@ -101,7 +101,7 @@ Pulse's reasoning is reachability-based, since the `JavaResource` attribute live
 
 **Evaluate:** Run before and after on the same binary and commit, then a whole-corpus regression run.
 
-### Edge Cases Considered
+### Edge cases
 
 - **The closed case must stay silent:** `optional.get().close()` has to discharge the obligation, or the model trades a false negative for a false positive, which in a leak checker is the worse trade. This is covered by `optionalOfClosedOk`.
 - **`ofNullable` as well as `of`:** Both are factories in real code, so modeling only `of` would leave half the pattern unreported.
@@ -109,9 +109,9 @@ Pulse's reasoning is reachability-based, since the `JavaResource` attribute live
 
 ---
 
-## Phase III: Build
+## Implementation
 
-### Implementation Progress
+### Commits and files
 
 | Commit | Date | Message |
 |---|---|---|
@@ -127,7 +127,7 @@ Pulse's reasoning is reachability-based, since the `JavaResource` attribute live
 
 The model is an `Optional` module with `init`, `of_` and `get` over a `__infer_model_backing_optional` field, written in the same `DSL.Syntax` style as `Boolean`, with three matcher rows gated on `PatternMatch.Java.implements "java.util.Optional"`.
 
-### Challenges Faced
+### What was hard
 
 The real cost of this contribution was not the 31-line model but getting a working infer build without root on a shared cluster. Three things went wrong in sequence. zarith needs GMP and there is no package manager available, so GMP had to be built from source with opam run at `depext=false`. opam's default solver happily installs a newer `ppxlib` than `infer.opam.locked` pins, which breaks the ppx-generated parsetree and fails deep inside generated OCaml with errors that do not name the cause. A full build also outlives an SSH session, so builds had to be detached and polled. None of that is interesting engineering, but all of it had to be solved before the first line of the model could be validated, and it is the reason I re-used this environment for the later infer work on #1937.
 
@@ -145,9 +145,9 @@ I put the design question, meaning whether `Optional` really is a `Boolean`-shap
 
 ---
 
-## Phase IV: Submit & Iterate
+## Review and outcome
 
-### Pull Request
+### The pull request
 
 **[facebook/infer#2068](https://github.com/facebook/infer/pull/2068)**, opened 2026-07-02 against `facebook/infer:main`, referencing the issue with a close keyword. The body leads with the false negative and why a leak checker under-reporting is the serious direction of error, then the value-box model mirroring `Boolean`, then the before and after evidence. My CLA was already signed from earlier ExecuTorch work.
 
@@ -155,7 +155,7 @@ I @-mentioned `davidpichardie`, the maintainer who had confirmed the bug and pre
 
 > @davidpichardie This implements the Optional model we discussed in #1951 (of/ofNullable/get), mirroring the Boolean model. Verified the repro reports PULSE_RESOURCE_LEAK after the change and stays clean when closed via get().
 
-### Maintainer Feedback Log
+### Maintainer feedback
 
 | Date | From | Feedback | My response |
 |---|---|---|---|
@@ -166,7 +166,7 @@ I @-mentioned `davidpichardie`, the maintainer who had confirmed the bug and pre
 
 No review comments were left on the PR, because infer's maintainers import approved external PRs through Meta's internal system, so a merge with no public review round is the normal healthy outcome here rather than a sign the PR was skimmed.
 
-### Learnings & Reflections
+### What I learned
 
 **Technical:** Modeling a wrapper for resource-lifetime purposes is really about keeping the wrapped obligation reachable rather than about tracking the wrapper. Because the `JavaResource` attribute already lives on the resource's own allocation, forwarding the value through `get` was sufficient and no release or delegation machinery was needed to get the low-false-positive behavior. That is a much smaller change than I expected going in, and I only found it by asking what the leak logic actually depends on instead of trying to model `Optional` faithfully.
 
@@ -174,7 +174,7 @@ No review comments were left on the PR, because infer's maintainers import appro
 
 **What I'd do differently:** I would have started the environment work a day earlier and treated it as its own task rather than as setup overhead. Three separate build blockers, covering GMP, ppxlib pinning and session lifetime, each cost hours, and none were visible from the issue. For any OCaml or compiler-scale repo I now budget the build as the first deliverable rather than as a prerequisite, which is exactly what made the follow-up contribution on #1937 much faster.
 
-### Resources Used
+### References
 
 - Issue #1951, for the confirmed bug and prescribed approach.
 - `infer/src/pulse/PulseModelsJava.ml`, for the `Boolean` model as structural template.

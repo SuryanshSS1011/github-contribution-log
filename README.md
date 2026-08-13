@@ -36,7 +36,7 @@ Eight merged and three in review. In the tables below, each entry in the "What I
 
 Each file in [`contributions/`](contributions/) follows the same structure, so any entry can be read end to end without context:
 
-- **Issue selection:** why I picked the issue, a short problem summary, how I verified it was still live and claimable, the specific files involved, and the acceptance criteria I held myself to.
-- **Reproduce and plan:** environment setup with the concrete obstacles I hit, numbered reproduction steps, expected versus actual behavior, the root cause, and the plan I worked to.
-- **Build:** commit hashes and dates, files changed with line counts, the obstacles that came up during implementation, and what was tested manually and automatically.
-- **Submit and iterate:** the pull request, a dated log of maintainer feedback and how I responded, and reflections on the technical lesson, the collaboration, and what I would do differently.
+- **The issue:** why I picked it, what was wrong, how I checked it was still available, the specific files involved, and what I decided would count as done.
+- **Diagnosis and plan:** environment setup with the concrete obstacles I hit, numbered reproduction steps, expected versus actual behavior, the root cause, and the plan I worked to.
+- **Implementation:** commit hashes and dates, files changed with line counts, what turned out to be hard, and what was tested manually and automatically.
+- **Review and outcome:** the pull request, a dated log of maintainer feedback and how I responded, and what I learned about the problem, the collaboration, and what I would do differently.

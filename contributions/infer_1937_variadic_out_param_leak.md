@@ -1,30 +1,30 @@
 # Model C variadic out-parameters to fix a false `MEMORY_LEAK_C`
 
-**Project:** [facebook/infer](https://github.com/facebook/infer) · **My fork:** https://github.com/SuryanshSS1011/infer
+**Project:** [facebook/infer](https://github.com/facebook/infer)
 **Issue:** [#1937](https://github.com/facebook/infer/issues/1937) · **Pull request:** [#2078](https://github.com/facebook/infer/pull/2078) · **Branch:** `pulse-c-va-arg`
 **Status:** Open, awaiting review. Scoped to the leak only, so it does not carry `Fixes #1937`.
 
 ---
 
-## Phase I: Issue Selection
+## The issue
 
-### Why I Chose This Issue
+### Why I picked it
 
 Infer is Meta's static analyzer and Pulse is its memory-and-resource lifetime checker. After landing a Pulse model fix in #1951 I wanted a meatier contribution in the same area, and the appeal here was precisely its scale, because it turned out to be rooted in a documented `TODO` inside Pulse's interprocedural call handling rather than a shallow model gap, so it touches core call dispatch rather than a lookup table. My learning goal was how an abstract interpreter passes information across a call boundary, and what it structurally cannot pass.
 
 It is a genuine false positive that still reproduces on current `main`, filed by a real user, the mariadb-connector-c author, against real code.
 
-### Problem Summary
+### What was wrong
 
 Pulse falsely reports `MEMORY_LEAK_C` when memory is allocated and stored through a variadic out-parameter, because the `va_arg` result is disconnected from the caller's argument, so `*p = malloc(...)` looks like a store into a fresh location that immediately leaks. A plain non-variadic `char** p` out-parameter is handled correctly, so the defect is specific to the variadic path. It matters because false positives are what get a static analyzer switched off, and this pattern is idiomatic C in exactly the kind of low-level library that most benefits from Pulse, so the report is unactionable. I chose it because it is a real false positive with a live reporter, and because the root cause sits deep enough to be worth the effort.
 
-### Issue Vetting
+### Before I started
 
 Open, unassigned, with no in-flight PR. Following my rule about old infer issues, where pre-2024 false positives are frequently already fixed but not closed, I built infer with the clang frontend enabled and confirmed the false positive still reproduces on current `main` before doing anything else.
 
 I posted my root-cause analysis to the issue on 2026-07-12 rather than a claim comment. The reporter `grooverdan`, the mariadb-connector-c author, and another commenter both responded supportively within a day, which confirmed the direction was worth building.
 
-### Where It Lives
+### Where it lives
 
 - `infer/src/pulse/PulseCallOperations.ml`, holding `trim_actuals_if_var_arg`, which drops the extra variadic actuals at the interprocedural boundary and carries its own `TODO` noting this is unimplemented.
 - `infer/src/pulse/PulseModelsC.ml`, where `va_start`, `va_arg` and `va_end` models belong.
@@ -32,7 +32,7 @@ I posted my root-cause analysis to the issue on 2026-07-12 rather than a claim c
 - `infer/src/pulse/Pulse.ml`, holding `prepare_args_if_hack_variadic`, the precedent for variadic handling in another language.
 - `infer/tests/codetoanalyze/c/pulse/var_arg.c` and `issues.exp`, the C Pulse regression corpus.
 
-### Acceptance Criteria
+### What counts as done
 
 1. The minimal repro and the common malloc-per-out-parameter shapes stop reporting `MEMORY_LEAK_C`.
 2. A genuine leak, meaning an out-parameter that is never freed, still reports, so the fix must not weaken real detection.
@@ -41,16 +41,16 @@ I posted my root-cause analysis to the issue on 2026-07-12 rather than a claim c
 
 ---
 
-## Phase II: Reproduce & Plan
+## Diagnosis and plan
 
-### Environment Setup
+### Environment setup
 
 I reused the infer build environment established for #1951 on Penn State's ROAR Collab cluster, which is the single biggest reason this contribution was feasible at all, with one addition.
 
 - **Challenge (the clang frontend is required here):** #1951 was a Java-model change while this one analyses C, so the build needs infer's clang frontend enabled, which is a substantially longer build than the default.
 - Carried over from #1951 are GMP built from source since I have no root for system packages, `depext=false`, strict pinning to `infer.opam.locked` and particularly `ppxlib` where a newer version breaks the ppx-generated parsetree, and detached builds that outlive an SSH session.
 
-### Steps to Reproduce
+### Steps to reproduce
 
 1. Build infer from current `main` with the clang frontend enabled.
 2. Save this minimal C file:
@@ -70,7 +70,7 @@ I reused the infer build environment established for #1951 on Penn State's ROAR 
    void caller() { char* v; set(&v); free(v); }
    ```
 
-### Expected vs. Actual
+### Expected vs. actual
 
 **Actual:** the variadic version reports `MEMORY_LEAK_C` on `caller` even though `v` is freed, while the non-variadic version is clean. The issue's original `ma_multi_malloc` from mariadb-connector-c reports as well.
 
@@ -78,7 +78,7 @@ I reused the infer build environment established for #1951 on Penn State's ROAR 
 
 I also verified the other direction, that a genuine leak with an out-parameter never freed still reports, because the fix must not buy a cleared false positive with a lost true positive.
 
-### Root Cause
+### Root cause
 
 Two mechanisms compound:
 
@@ -89,7 +89,7 @@ With the actuals dropped there is nothing left to reconnect the `va_arg` read to
 
 The contrast with the non-variadic case is the key. There, Pulse binds the callee formal `p` to the caller actual `&v` in `materialize_pre_for_parameters`, so the callee's post-state, which says `*p` now points at malloc'd memory and is initialized, is reflected back onto the caller's real `v`. A C variadic has no formal parameter for the extras, and that is the structural difference that makes this hard.
 
-### Plan (UMPIRE)
+### The plan
 
 **Understand:** The extra actuals are discarded at the boundary and `va_arg` is havoc'd, so the allocation lands somewhere unreachable.
 
@@ -108,7 +108,7 @@ The contrast with the non-variadic case is the key. There, Pulse binds the calle
 
 **Evaluate:** Run the whole C Pulse regression suite, plus the specific before and after on the repro shapes.
 
-### Edge Cases Considered
+### Edge cases
 
 - **Value-returning variadics must be unaffected:** A summing `sum(int n, ...)` reads `int`s rather than out-parameter pointers. My first version perturbed an existing true positive there, which the regression suite caught, and I resolved it by type-gating the `va_arg` read to pointer results so value-returning variadics are left completely alone.
 - **Genuine leaks must still report**, so an out-parameter that is never freed is kept as a positive test.
@@ -117,9 +117,9 @@ The contrast with the non-variadic case is the key. There, Pulse binds the calle
 
 ---
 
-## Phase III: Build
+## Implementation
 
-### Implementation Progress
+### Commits and files
 
 | Commit | Date | Message |
 |---|---|---|
@@ -139,7 +139,7 @@ The contrast with the non-variadic case is the key. There, Pulse binds the calle
 
 In detail, there is a new `VariadicActuals` submodule and `variadic_actuals` field on the Pulse specialization, a `seed_variadic_actuals` that writes each caller actual into `__infer_va_args_global[k]` in the callee's initial state, `va_start`, `va_arg` and `va_end` models plus an `eval_read_global` helper with `va_arg` type-gated to pointer reads, and the call-site trigger for `is_clang_variadic` callees with extra actuals.
 
-### Challenges Faced
+### What was hard
 
 **Pushing past two architectural dead-end conclusions:** The fix looked impossible twice, because the obvious approaches of binding through the pre-condition or rooting a heap path on a callee formal genuinely do not work for C variadics, since there is no formal parameter for the extras. Both times the honest read of the code was that this cannot be done from here. The unlock was recognizing that Pulse's specialization mechanism is a third path that sidesteps the constraint, because it re-analyzes the callee with call-site context injected, which is enough to make the allocation escape into something stable and reachable even though it is not the caller's actual variable.
 
@@ -160,9 +160,9 @@ In detail, there is a new `VariadicActuals` submodule and `variadic_actuals` fie
 
 ---
 
-## Phase IV: Submit & Iterate
+## Review and outcome
 
-### Pull Request
+### The pull request
 
 **[facebook/infer#2078](https://github.com/facebook/infer/pull/2078)**, opened 2026-07-13 against `facebook/infer:main`. The body states the false positive, the two-mechanism root cause, the specialization-based fix, and both limitations explicitly. My CLA was already signed.
 
@@ -170,12 +170,12 @@ It deliberately omits a `Fixes #1937` keyword so the issue stays open for its re
 
 > Just to set expectations, PR #2078 clears the `MEMORY_LEAK_C` false positive but intentionally leaves the `PULSE_UNINITIALIZED_VALUE` ones open.
 
-### Scope and Known Limitations
+### Scope and known limitations
 
 1. **The companion `PULSE_UNINITIALIZED_VALUE` false positives are not addressed:** Clearing them requires reflecting the callee's write onto the caller's real variable, which needs true caller-actual binding, and I confirmed the specialization mechanism cannot carry that. The actuals at the call site are opaque abstract values rather than heap paths, `apply` runs in the callee frame without access to caller values, and specialization keys must be stable heap paths. That is precisely why the leak is fixable through this mechanism, since it only needs the allocation to escape somewhere reachable, and the uninitialized-value false positive is not.
 2. **The issue's exact `ma_multi_malloc` still reports:** It does a single `malloc(tot_length)` and distributes pointers into that one block across a second `va_start` pass with `*ptr = res; res += length`, with sizes computed in the first pass. That aliasing-through-arithmetic shape, and the two-pass counting and assigning idiom, are each harder than the common malloc-per-out-parameter pattern this PR handles.
 
-### Maintainer Feedback Log
+### Maintainer feedback
 
 | Date | From | Feedback | My response |
 |---|---|---|---|
@@ -187,7 +187,7 @@ It deliberately omits a `Fixes #1937` keyword so the issue stays open for its re
 
 There are no review comments yet on the PR itself.
 
-### Learnings & Reflections
+### What I learned
 
 **Technical:** The most useful thing I learned is why the two false positives have different difficulty, which only becomes clear once you can state what crosses a call boundary. The leak needs the allocation to escape into something stable and reachable, so a disconnected but stable cell suffices, while the uninitialized-value false positive needs the callee's write reflected onto the caller's actual variable, which requires a real formal-to-actual binding, and C variadics have no formal to bind. Same symptom, same root cause, structurally different fixability. Getting to that statement is what made the scope decision obvious instead of arbitrary.
 
@@ -195,7 +195,7 @@ There are no review comments yet on the PR itself.
 
 **What I'd do differently:** I would run the full regression suite earlier, before the design felt finished, because the value-returning-variadic regression was invisible to reasoning and obvious to the corpus, and finding it earlier would have shaped the type gate as part of the design rather than as a repair. I would also have posted the uninitialized-value design question at the same time as the PR rather than seventeen days later, since the PR's scope note said what I was not doing but not what I proposed doing about it, and that gap is latency I created.
 
-### Resources Used
+### References
 
 - Issue #1937 and its `ma_multi_malloc` reproduction from mariadb-connector-c.
 - `Pulse.ml`, for `prepare_args_if_hack_variadic`, the Hack variadic precedent.
