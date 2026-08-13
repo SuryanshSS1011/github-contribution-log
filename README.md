@@ -2,13 +2,14 @@
 
 Tracking workspace for my open-source contributions across ML systems and program-analysis tooling, adjacent to my research.
 
-Eight merged and three in review, across upstream projects. In the tables below, each entry in the "What I fixed" column links to its full writeup in [`contributions/`](contributions/).
+Eight merged and three in review. In the tables below, each entry in the "What I fixed" column links to its full writeup in [`contributions/`](contributions/).
 
 ## Merged
 
 | Project | Issue | What I fixed | Pull request | Merged |
 |---|---|---|---|---|
-| decoderesearch/SAELens | self-sourced | [`autocast_lm` silently did nothing off CUDA, and the activation buffer landed on the wrong device](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_722_activations_store_device.md) | [#722](https://github.com/decoderesearch/SAELens/pull/722) | 2026-08-05 || huggingface/datasets | [#8327](https://github.com/huggingface/datasets/issues/8327) | [`Dataset.from_pandas` OOM caused by a fingerprint that scaled with Arrow chunk count](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/datasets_8327_fingerprint_chunking.md) | [#8339](https://github.com/huggingface/datasets/pull/8339) | 2026-07-22 |
+| decoderesearch/SAELens | self-sourced | [`autocast_lm` silently did nothing off CUDA, and the activation buffer landed on the wrong device](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_722_activations_store_device.md) | [#722](https://github.com/decoderesearch/SAELens/pull/722) | 2026-08-05 |
+| huggingface/datasets | [#8327](https://github.com/huggingface/datasets/issues/8327) | [`Dataset.from_pandas` OOM caused by a fingerprint that scaled with Arrow chunk count](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/datasets_8327_fingerprint_chunking.md) | [#8339](https://github.com/huggingface/datasets/pull/8339) | 2026-07-22 |
 | pytorch/executorch | [#20804](https://github.com/pytorch/executorch/issues/20804) | [Portable CPU kernel rejected valid transposed convolution weights with a non-default dim order](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_20804_transposed_conv_dimorder.md) | [#21035](https://github.com/pytorch/executorch/pull/21035) | 2026-07-22 |
 | decoderesearch/SAELens | [#551](https://github.com/decoderesearch/SAELens/issues/551) | [`ActivationsStore` loaded the whole dataset even when reading cached activations](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_551_activations_store_no_dataset.md) | [#716](https://github.com/decoderesearch/SAELens/pull/716) | 2026-07-20 |
 | astral-sh/ty | [#3674](https://github.com/astral-sh/ty/issues/3674) | [Renaming an attribute left the matching `__slots__` string stale, which breaks the class](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/ty_3674_slots_rename.md) | [ruff#26438](https://github.com/astral-sh/ruff/pull/26438) | 2026-07-06 |
@@ -33,9 +34,9 @@ Eight merged and three in review, across upstream projects. In the tables below,
 
 ## About the writeups
 
-Each file in [`contributions/`](contributions/) follows the same four phases, so any entry can be read end to end without context:
+Each file in [`contributions/`](contributions/) follows the same structure, so any entry can be read end to end without context:
 
-- **Phase I, Issue Selection:** why I picked the issue, a short problem summary, how I verified it was still live and claimable, the specific files involved, and the acceptance criteria I held myself to.
-- **Phase II, Reproduce & Plan:** environment setup with the concrete obstacles I hit, numbered reproduction steps, expected versus actual behavior, the root cause, and a UMPIRE plan.
-- **Phase III, Build:** commit hashes and dates, files changed with line counts, the obstacles that came up during implementation, and what was tested manually and automatically.
-- **Phase IV, Submit & Iterate:** the pull request, a dated log of maintainer feedback and how I responded, and reflections on the technical lesson, the collaboration, and what I would do differently.
+- **Issue selection:** why I picked the issue, a short problem summary, how I verified it was still live and claimable, the specific files involved, and the acceptance criteria I held myself to.
+- **Reproduce and plan:** environment setup with the concrete obstacles I hit, numbered reproduction steps, expected versus actual behavior, the root cause, and the plan I worked to.
+- **Build:** commit hashes and dates, files changed with line counts, the obstacles that came up during implementation, and what was tested manually and automatically.
+- **Submit and iterate:** the pull request, a dated log of maintainer feedback and how I responded, and reflections on the technical lesson, the collaboration, and what I would do differently.

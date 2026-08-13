@@ -1,6 +1,5 @@
 # Fix the CodeLlama tokenizer dropping leading whitespace on decode
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [huggingface/transformers](https://github.com/huggingface/transformers) · **My fork:** https://github.com/SuryanshSS1011/transformers
 **Issue:** [#47487](https://github.com/huggingface/transformers/issues/47487), filed by me · **Pull request:** [#47488](https://github.com/huggingface/transformers/pull/47488) · **Branch:** `fix/codellama-decode-leading-whitespace`
 **Status:** Merged 2026-07-31 (`1b20eb168c`), then **reverted** 2026-08-10 ([#47861](https://github.com/huggingface/transformers/pull/47861)) in favour of a more optimal decoder-only fix ([#47862](https://github.com/huggingface/transformers/pull/47862)). See the update below.

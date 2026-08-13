@@ -1,6 +1,5 @@
 # Isolate the MLX submodule build with ExternalProject
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [pytorch/executorch](https://github.com/pytorch/executorch) · **My fork:** https://github.com/SuryanshSS1011/executorch
 **Issue:** [#20556](https://github.com/pytorch/executorch/issues/20556) · **Pull request:** [#20585](https://github.com/pytorch/executorch/pull/20585) · **Branch:** `fix/20556-mlx-build-isolation`
 **Status:** **Merged** 2026-06-29 (merge commit `0cef6de29`). Issue closed.

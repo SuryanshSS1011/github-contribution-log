@@ -1,6 +1,5 @@
 # Update the `__slots__` string when renaming an attribute (ty)
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [astral-sh/ty](https://github.com/astral-sh/ty), developed in the [astral-sh/ruff](https://github.com/astral-sh/ruff) monorepo · **My fork:** https://github.com/SuryanshSS1011/ruff
 **Issue:** [ty#3674](https://github.com/astral-sh/ty/issues/3674) · **Pull request:** [ruff#26438](https://github.com/astral-sh/ruff/pull/26438) · **Branch:** `ty-rename-slots`
 **Status:** **Merged** 2026-07-06 (merge commit `f1da30d9`). Issue closed.

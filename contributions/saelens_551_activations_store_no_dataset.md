@@ -1,6 +1,5 @@
 # Don't load the dataset when reading cached activations
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [decoderesearch/SAELens](https://github.com/decoderesearch/SAELens), the org renamed from `jbloomAus` · **My fork:** https://github.com/SuryanshSS1011/SAELens
 **Issue:** [#551](https://github.com/decoderesearch/SAELens/issues/551) · **Pull request:** [#716](https://github.com/decoderesearch/SAELens/pull/716) · **Branch:** `activations-store-optional-dataset`
 **Status:** **Merged** 2026-07-20 (merge commit `f34ac827`). Issue closed.

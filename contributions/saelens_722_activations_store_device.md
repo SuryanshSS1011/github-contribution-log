@@ -1,6 +1,5 @@
 # Run the LLM autocast and the activation buffer on the model's device
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [decoderesearch/SAELens](https://github.com/decoderesearch/SAELens) · **My fork:** https://github.com/SuryanshSS1011/SAELens
 **Issue:** none, self-sourced · **Pull request:** [#722](https://github.com/decoderesearch/SAELens/pull/722) · **Branch:** `fix/activations-store-autocast-device`
 **Status:** **Merged** 2026-08-05 (merge commit `928d44fb5`). Self-sourced, so there is no upstream issue.

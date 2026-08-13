@@ -1,6 +1,5 @@
 # Invalidate the `HookRegistry` child-registries cache on enable/disable cache
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [huggingface/diffusers](https://github.com/huggingface/diffusers) · **My fork:** https://github.com/SuryanshSS1011/diffusers
 **Issue:** [#14037](https://github.com/huggingface/diffusers/issues/14037) · **Pull request:** [#14093](https://github.com/huggingface/diffusers/pull/14093) · **Branch:** `fix/14037-hook-registry-cache-invalidation`
 **Status:** Open. CI green, test rework pushed after four review rounds.

@@ -1,6 +1,5 @@
 # Exempt `sys.version` family comparisons from PLR2004
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [astral-sh/ruff](https://github.com/astral-sh/ruff) · **My fork:** https://github.com/SuryanshSS1011/ruff
 **Issue:** [#25588](https://github.com/astral-sh/ruff/issues/25588) · **Pull request:** [#25743](https://github.com/astral-sh/ruff/pull/25743) · **Branch:** `plr2004-sys-version-exemption`
 **Status:** **Merged** 2026-06-10 (merge commit `7fbef674f`). Issue closed.

@@ -1,6 +1,5 @@
 # Constant-propagate `stablehlo.reduce` in Enzyme-JAX
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [EnzymeAD/Enzyme-JAX](https://github.com/EnzymeAD/Enzyme-JAX) · **My fork:** https://github.com/SuryanshSS1011/Enzyme-JAX
 **Issue:** [#1084](https://github.com/EnzymeAD/Enzyme-JAX/issues/1084) · **Pull request:** [#2524](https://github.com/EnzymeAD/Enzyme-JAX/pull/2524) · **Branch:** `reduce-const-prop`
 **Status:** Open. Reviewed, blocked on a scope decision about extending the fold to add and mul.

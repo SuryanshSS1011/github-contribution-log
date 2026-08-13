@@ -1,6 +1,5 @@
 # Simplify `real`, `imag`, and `abs` of a complex `exp`
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [EnzymeAD/Enzyme-JAX](https://github.com/EnzymeAD/Enzyme-JAX) · **My fork:** https://github.com/SuryanshSS1011/Enzyme-JAX
 **Issue:** [#1990](https://github.com/EnzymeAD/Enzyme-JAX/issues/1990) · **Pull request:** [#2635](https://github.com/EnzymeAD/Enzyme-JAX/pull/2635) · **Branch:** `feat/1990-real-imag-abs-exp`
 **Status:** Open. One review round addressed the same day, awaiting a second look.

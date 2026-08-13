@@ -1,6 +1,5 @@
 # Allow transposed convolution weights with a non-default dim order
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [pytorch/executorch](https://github.com/pytorch/executorch) · **My fork:** https://github.com/SuryanshSS1011/executorch
 **Issue:** [#20804](https://github.com/pytorch/executorch/issues/20804) · **Pull request:** [#21035](https://github.com/pytorch/executorch/pull/21035) · **Branch:** `fix/20804-transposed-conv-out-channels-1`
 **Status:** **Merged** 2026-07-22 (merge commit `c46dc2726`). Issue closed.

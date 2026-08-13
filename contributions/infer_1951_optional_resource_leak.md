@@ -1,6 +1,5 @@
 # Model `java.util.Optional` so Pulse catches resource leaks through it
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [facebook/infer](https://github.com/facebook/infer) · **My fork:** https://github.com/SuryanshSS1011/infer
 **Issue:** [#1951](https://github.com/facebook/infer/issues/1951) · **Pull request:** [#2068](https://github.com/facebook/infer/pull/2068) · **Branch:** `pulse-model-optional-resource-leak`
 **Status:** **Merged** 2026-07-03 (merge commit `f123c84`). Issue closed.

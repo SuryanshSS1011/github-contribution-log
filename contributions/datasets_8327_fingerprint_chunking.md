@@ -1,6 +1,5 @@
 # Make the dataset fingerprint independent of Arrow chunking
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [huggingface/datasets](https://github.com/huggingface/datasets) · **My fork:** https://github.com/SuryanshSS1011/datasets
 **Issue:** [#8327](https://github.com/huggingface/datasets/issues/8327) · **Pull request:** [#8339](https://github.com/huggingface/datasets/pull/8339) · **Branch:** `fix-fingerprint-chunk-independent-8327`
 **Status:** **Merged** 2026-07-22 (merge commit `3bfbc67ce`). Issue closed.

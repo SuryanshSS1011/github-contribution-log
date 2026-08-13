@@ -1,6 +1,5 @@
 # Model C variadic out-parameters to fix a false `MEMORY_LEAK_C`
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [facebook/infer](https://github.com/facebook/infer) · **My fork:** https://github.com/SuryanshSS1011/infer
 **Issue:** [#1937](https://github.com/facebook/infer/issues/1937) · **Pull request:** [#2078](https://github.com/facebook/infer/pull/2078) · **Branch:** `pulse-c-va-arg`
 **Status:** Open, awaiting review. Scoped to the leak only, so it does not carry `Fixes #1937`.

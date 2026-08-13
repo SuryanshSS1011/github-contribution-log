@@ -1,6 +1,5 @@
 # Hint when a build failure is caused by a `requires-python` mismatch
 
-**Student:** Suryansh Sijwali ([@SuryanshSS1011](https://github.com/SuryanshSS1011))
 **Project:** [astral-sh/uv](https://github.com/astral-sh/uv) · **My fork:** https://github.com/SuryanshSS1011/uv
 **Issue:** [#7035](https://github.com/astral-sh/uv/issues/7035) · **Pull request:** [#19673](https://github.com/astral-sh/uv/pull/19673) · **Branch:** `pip-install-requires-python-hint`
 **Status:** Open. CI green, reworked after review, parked on an upstream refactor.
