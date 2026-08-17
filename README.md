@@ -2,7 +2,7 @@
 
 Tracking workspace for my open-source contributions across ML systems and program-analysis tooling, adjacent to my research.
 
-Eight merged and three in review. In the tables below, each entry in the "What I fixed" column links to its full writeup in [`contributions/`](contributions/).
+Eight merged and eleven in review. In the tables below, each entry in the "What I fixed" column links to its full writeup in [`contributions/`](contributions/).
 
 ## Merged
 
@@ -21,15 +21,23 @@ Eight merged and three in review. In the tables below, each entry in the "What I
 
 | Project | Issue | What I fixed | Pull request | Status |
 |---|---|---|---|---|
-| astral-sh/uv | [#7035](https://github.com/astral-sh/uv/issues/7035) | [No hint when a build failure is caused by a `requires-python` mismatch](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/uv_7035_requires_python_hint.md) | [#19673](https://github.com/astral-sh/uv/pull/19673) | CI green, reworked after review, parked on an upstream refactor. |
+| pytorch/executorch | self-sourced | [The optimized `layer_norm` lacked the dim order check its portable twin has](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_21866_layer_norm_dim_order.md) | [#21866](https://github.com/pytorch/executorch/pull/21866) | CI green, awaiting review. |
+| pytorch/executorch | self-sourced | [Eight kernels that copy by block returned wrong data on channels-last input](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_21865_block_copy_dim_order.md) | [#21865](https://github.com/pytorch/executorch/pull/21865) | Awaiting review. |
+| decoderesearch/SAELens | self-sourced | [A BOS token id of 0 read as absent, so Pythia runs silently got no BOS](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/saelens_724_bos_token_id_zero.md) | [#724](https://github.com/decoderesearch/SAELens/pull/724) | Awaiting review, CI failures not attributable to the change. |
+| pytorch/executorch | self-sourced | [`coordinateToIndex` assumed row-major, so six kernels walked the buffer wrong](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_21828_stride_indexing.md) | [#21828](https://github.com/pytorch/executorch/pull/21828) | CI green, awaiting review. |
+| huggingface/trl | [#6669](https://github.com/huggingface/trl/issues/6669) | [Wrapped packing re-read from the start of the buffer on sliced tables](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/trl_6670_pack_wrapped_sliced.md) | [#6670](https://github.com/huggingface/trl/pull/6670) | CI green, awaiting review. |
+| pytorch/executorch | [#16429](https://github.com/pytorch/executorch/issues/16429) | [A reduction helper walked out of bounds on non-contiguous tensors](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/executorch_21517_reduce_util_noncontiguous.md) | [#21517](https://github.com/pytorch/executorch/pull/21517) | **Approved**, awaiting merge. |
+| facebook/infer | [#1937](https://github.com/facebook/infer/issues/1937) | [Pulse falsely reported a leak through a C variadic out-parameter](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/infer_1937_variadic_out_param_leak.md) | [#2078](https://github.com/facebook/infer/pull/2078) | CI green, awaiting review. |
+| EnzymeAD/Enzyme-JAX | [#1990](https://github.com/EnzymeAD/Enzyme-JAX/issues/1990) | [`real`, `imag` and `abs` of a complex `exp` stayed in the complex domain](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/enzymejax_1990_real_imag_abs_exp.md) | [#2635](https://github.com/EnzymeAD/Enzyme-JAX/pull/2635) | One review round addressed, awaiting a second look. |
 | huggingface/diffusers | [#14037](https://github.com/huggingface/diffusers/issues/14037) | [A stale `HookRegistry` cache broke caching enabled after a warmup pass](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/diffusers_14037_hook_registry_cache.md) | [#14093](https://github.com/huggingface/diffusers/pull/14093) | CI green, test rework pushed after four review rounds. |
+| astral-sh/uv | [#7035](https://github.com/astral-sh/uv/issues/7035) | [No hint when a build failure is caused by a `requires-python` mismatch](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/uv_7035_requires_python_hint.md) | [#19673](https://github.com/astral-sh/uv/pull/19673) | Reworked onto the maintainer's refactor, awaiting review. |
 | EnzymeAD/Enzyme-JAX | [#1084](https://github.com/EnzymeAD/Enzyme-JAX/issues/1084) | [`stablehlo.reduce` over splat constants was not folded at compile time](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/enzymejax_1084_reduce_const_prop.md) | [#2524](https://github.com/EnzymeAD/Enzyme-JAX/pull/2524) | Reviewed, blocked on a scope decision about add and mul. |
 
 ## Filed bug reports
 
 | Project | Issue | What I reported | Status |
 |---|---|---|---|
-| huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) | CodeLlama tokenizer dropped leading whitespace on decode, refiled with a fresh reproduction after [#46491](https://github.com/huggingface/transformers/issues/46491) was stale-closed | My [#47488](https://github.com/huggingface/transformers/pull/47488) merged, later superseded by a more optimal decoder-only fix in [#47862](https://github.com/huggingface/transformers/pull/47862). |
+| huggingface/transformers | [#47487](https://github.com/huggingface/transformers/issues/47487) | [CodeLlama tokenizer dropped leading whitespace on decode, refiled with a fresh reproduction after #46491 was stale-closed](https://github.com/SuryanshSS1011/github-contribution-log/blob/main/contributions/transformers_47488_codellama_leadingspace.md) | My [#47488](https://github.com/huggingface/transformers/pull/47488) merged, then reverted by [#47861](https://github.com/huggingface/transformers/pull/47861) in favour of a decoder-only fix in [#47862](https://github.com/huggingface/transformers/pull/47862), still open. |
 | huggingface/transformers | [#46489](https://github.com/huggingface/transformers/issues/46489) | DeepSeek-Coder v1 tokenizer produced wrong output on v5 and later, a gap left by PR #44801 | Resolved by upstream [#46091](https://github.com/huggingface/transformers/pull/46091), issue closed. |
 
 ## About the writeups
