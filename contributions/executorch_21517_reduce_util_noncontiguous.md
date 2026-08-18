@@ -2,7 +2,7 @@
 
 **Project:** [pytorch/executorch](https://github.com/pytorch/executorch)
 **Issue:** [#16429](https://github.com/pytorch/executorch/issues/16429) · **Pull request:** [#21517](https://github.com/pytorch/executorch/pull/21517) · **Branch:** `fix/16429-reduce-util-noncontiguous`
-**Status:** Open, approved by `JacobSzwejbka` on 2026-08-13 and awaiting merge. One red check, the Arduino library job, unrelated to CPU kernels.
+**Status:** **Merged** 2026-08-17 (merge commit `3dfa64421`), approved by `JacobSzwejbka` on 2026-08-13. Issue closed.
 
 ---
 
